@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BTC TRACKER</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BTC TRACKER">
+<meta name="theme-color" content="#0f1115">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<style>:root { --bg:#0f1115; --card:#181b22; --line:#2a2f3a; --text:#e8eaed; --muted:#8b93a1; --btc:#f7931a; }
+* { box-sizing: border-box; }
+body { width: 380px; margin: 0; padding: 14px 16px; background: var(--bg); color: var(--text);
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; justify-content: space-between; align-items: flex-start; }
+.price { font-size: 28px; font-weight: 700; color: var(--btc); letter-spacing: -0.5px; }
+.phase { padding: 5px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; color: #111; max-width: 170px; text-align: center; }
+.note { margin: 8px 0 12px; color: var(--muted); }
+.small { font-size: 11.5px; } .muted { color: var(--muted); }
+h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 16px 0 6px; }
+.scores { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 4px; }
+.scores > div { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.scores b { font-size: 24px; } .scores span { margin-left: 6px; color: var(--muted); font-size: 11px; }
+.meter { height: 6px; background: var(--bg); border-radius: 3px; margin: 4px 0; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; border-radius: 3px; }
+.scores small { color: var(--muted); font-size: 10.5px; }
+.clock { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.clock div { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px; text-align: center; }
+.clock b { display: block; font-size: 18px; } .clock span { font-size: 10.5px; color: var(--muted); }
+.bars .bar { display: grid; grid-template-columns: 52px 1fr 62px; align-items: center; gap: 6px; margin: 4px 0; }
+.track { height: 12px; background: var(--card); border-radius: 6px; overflow: hidden; }
+.fill { height: 100%; border-radius: 6px; background: #4b5563; }
+.fill.now { background: var(--btc); }
+.bar .v { text-align: right; font-variant-numeric: tabular-nums; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { padding: 5px 4px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; color: var(--muted); font-weight: 400; }
+th.now, td.now { color: var(--btc); font-weight: 600; }
+canvas { width: 100%; height: 60px; margin-top: 6px; }
+details { margin-top: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+summary { cursor: pointer; font-weight: 600; }
+label { display: block; margin: 8px 0; } label.row { display: flex; gap: 6px; align-items: center; }
+input[type=number] { width: 110px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+button { background: var(--btc); color: #111; border: 0; border-radius: 6px; padding: 5px 12px; font-weight: 600; cursor: pointer; }
+footer { margin-top: 12px; } a { color: var(--btc); }
+
+.fc { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+.fc .range { font-size: 18px; font-weight: 700; }
+textarea { width: 100%; margin-top: 4px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px; font: inherit; font-size: 12px; }
+button.ghost { background: transparent; color: var(--btc); border: 1px solid var(--btc); }
+#track { margin: 10px 0 6px; }
+.entry { border-left: 3px solid var(--line); padding: 4px 8px; margin: 6px 0; font-size: 11.5px; }
+.entry.hit { border-color: #22c55e; } .entry.miss { border-color: #ef4444; }
+
+.signal { margin: 12px 0 10px; border-radius: 12px; padding: 12px 14px; border: 2px solid var(--sig, #6b7280); background: color-mix(in srgb, var(--sig, #6b7280) 14%, var(--card)); }
+.sigHead { display: flex; flex-direction: column; gap: 2px; }
+.sigHead b { font-size: 22px; color: var(--sig); letter-spacing: -0.3px; }
+.signal p { margin: 6px 0 8px; }
+.signal ul { list-style: none; padding: 0; margin: 0 0 8px; font-size: 12px; }
+.signal li { display: flex; gap: 8px; padding: 3px 0; }
+.signal li i { font-style: normal; width: 16px; flex: none; font-weight: 700; }
+.signal li.y i { color: #22c55e; } .signal li.n i { color: #ef4444; } .signal li.u i { color: var(--muted); }
+.signal li small { color: var(--muted); margin-left: auto; text-align: right; }
+.sigFoot { font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 6px; }
+
+body{width:auto;max-width:560px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));font-size:14px;-webkit-text-size-adjust:100%}
+input,textarea{font-size:16px!important}
+.phase{max-width:190px}</style></head><body>
+  <header>
+    <div>
+      <div class="muted small">BTC / USD</div>
+      <div id="price" class="price">—</div>
+      <div id="dd" class="small"></div>
+    </div>
+    <div id="phase" class="phase">loading…</div>
+  </header>
+  <section id="signal" class="signal">
+    <div class="sigHead"><span class="muted small">WHAT HISTORY SAYS NOW</span><b id="sigLabel">—</b></div>
+    <p id="sigText"></p>
+    <ul id="sigChecks"></ul>
+    <div class="sigFoot">This never places orders. It can't buy or sell for you — you decide, on your exchange.</div>
+  </section>
+  <p id="phaseNote" class="note"></p>
+
+  <section class="scores">
+    <div><b id="vScore">—</b><span>Value vs history</span><div class="meter"><i id="vBar"></i></div><small id="vNote"></small></div>
+    <div><b id="tScore">—</b><span>Trend</span><div class="meter"><i id="tBar"></i></div><small id="tNote"></small></div>
+  </section>
+  <p id="combo" class="note"></p>
+
+  <section class="clock">
+    <div><b id="dHalving">—</b><span>days since halving</span></div>
+    <div><b id="dPeak">—</b><span>days since top</span></div>
+    <div><b id="dNext">—</b><span>days to next halving</span></div>
+  </section>
+
+  <h2>Bear market length: top → low (now: top → today)</h2>
+  <div id="lenBars" class="bars"></div>
+
+  <h2>Drop from the top</h2>
+  <div id="ddBars" class="bars"></div>
+
+  <h2>Cycle side-by-side</h2>
+  <table id="table"></table>
+
+  <h2>Trend</h2>
+  <div id="ma" class="small"></div>
+  <canvas id="spark" width="340" height="60"></canvas>
+
+  <h2>Weekly forecast</h2>
+  <div id="fc" class="fc"></div>
+  <label class="small muted">Research notes for this week (saved with the forecast)
+    <textarea id="fcNote" rows="3"></textarea></label>
+  <label class="small muted">Your research range (optional, graded alongside the model):
+    $ <input id="rLow" type="number" placeholder="low"> – $ <input id="rHigh" type="number" placeholder="high"></label>
+  <button id="saveNote">Save notes</button> <button id="export" class="ghost">Export journal</button> <span id="noteSaved" class="muted small"></span>
+  <div id="track" class="small"></div>
+  <div id="log"></div>
+
+  <details>
+    <summary>Alerts</summary><p class='muted small'>Alerts need the desktop extension or the Scriptable widget — Safari home-screen apps can't notify in the background.</p>
+    <label>Notify if BTC drops below $ <input id="alertBelow" type="number" placeholder="e.g. 50000"></label>
+    <label>Notify if BTC rises above $ <input id="alertAbove" type="number" placeholder="e.g. 80000"></label>
+    <label class="row"><input id="notifyPhase" type="checkbox"> Notify when the cycle phase changes</label>
+    <button id="save">Save</button> <span id="saved" class="muted small"></span>
+  </details>
+
+  <footer class="muted small">
+    <span id="updated"></span> · <a href="#" id="refresh">refresh</a><br>
+    History only covers 4 halvings. This shows context, not buy/sell advice. The extension never trades.
+  </footer>
+  
+<script>
+(function(){
+  const K = "btc-tracker:";
+  const read = (area) => { try { return JSON.parse(localStorage.getItem(K + area) || "{}"); } catch (e) { return {}; } };
+  const write = (area, obj) => { try { localStorage.setItem(K + area, JSON.stringify(obj)); } catch (e) {} };
+  const mkArea = (area) => ({
+    get: async (keys) => { const all = read(area); if (!keys) return all; const out = {}; [].concat(keys).forEach((k) => { if (k in all) out[k] = all[k]; }); return out; },
+    set: async (obj) => { write(area, Object.assign(read(area), obj)); }
+  });
+  const listeners = { installed: [], message: [] };
+  window.chrome = {
+    storage: { local: mkArea("local"), sync: mkArea("sync") },
+    runtime: {
+      onInstalled: { addListener: (f) => listeners.installed.push(f) },
+      onStartup: { addListener: () => {} },
+      onMessage: { addListener: (f) => listeners.message.push(f) },
+      sendMessage: (msg, cb) => { listeners.message.forEach((f) => f(msg, {}, cb || (() => {}))); }
+    },
+    alarms: { create: () => {}, onAlarm: { addListener: () => {} } },
+    action: { setBadgeText: () => {}, setBadgeBackgroundColor: () => {} },
+    notifications: { create: () => {} }
+  };
+  window.importScripts = () => {};
+  window.__webInstall = async () => {
+    const { cycle } = await chrome.storage.local.get("cycle");
+    if (!cycle) for (const f of listeners.installed) await f();
+  };
+})();
+</script>
+<script>// Shared cycle data + math. Loaded by popup.html and background.js.
+// Prices are approximate USD (intraday highs/lows). Edit here if you want to tweak.
+
+const DAY = 86400000;
+
+const CYCLES = [
+  {
+    id: "2016",
+    label: "2016 halving → 2017 top",
+    halving: "2016-07-09", halvingPrice: 650,
+    peakDate: "2017-12-17", peak: 19783,
+    bottomDate: "2018-12-15", bottom: 3150,
+    sameDayPrice: 3650 // price ~946 days after the halving (Feb 2019)
+  },
+  {
+    id: "2020",
+    label: "2020 halving → 2021 top",
+    halving: "2020-05-11", halvingPrice: 8600,
+    peakDate: "2021-11-10", peak: 69000,
+    bottomDate: "2022-11-21", bottom: 15480,
+    sameDayPrice: 17800 // ~946 days after the halving (Dec 2022)
+  }
+];
+
+// The cycle we're in now. Peak/low are updated automatically by background.js
+// whenever the live price makes a new high or a new post-peak low.
+const CURRENT_DEFAULT = {
+  id: "2024",
+  label: "2024 halving → 2025 top (now)",
+  halving: "2024-04-20", halvingPrice: 64000,
+  peakDate: "2025-10-06", peak: 126200,
+  lowDate: "2026-11-21", low: 55100
+};
+
+const NEXT_HALVING_BLOCK = 1050000;
+const NEXT_HALVING_FALLBACK = "2028-04-15";
+
+function d(s) { return new Date(s + "T00:00:00Z"); }
+function daysBetween(a, b) { return Math.round((b - a) / DAY); }
+
+function enrich(c) {
+  const h = d(c.halving), p = d(c.peakDate), b = d(c.bottomDate);
+  return {
+    ...c,
+    haltToPeak: daysBetween(h, p),
+    peakToBottom: daysBetween(p, b),
+    haltToBottom: daysBetween(h, b),
+    drawdown: c.bottom / c.peak - 1,
+    peakMultiple: c.peak / c.halvingPrice
+  };
+}
+
+// Plain-English read of where we are, based on what happened at the same
+// point in past cycles. Descriptive, NOT a buy/sell instruction.
+function cyclePhase({ daysSincePeak, drawdown, aboveMA365 }) {
+  if (daysSincePeak <= 3 && drawdown > -0.05)
+    return { key: "discovery", color: "#16a34a", name: "New highs / price discovery",
+      note: "Price is at or near its all-time high. Past cycle tops came ~526–548 days after a halving." };
+  if (aboveMA365 === true && daysSincePeak > 300)
+    return { key: "recovery", color: "#22c55e", name: "Recovery",
+      note: "Back above the 365-day average after a long bear. In 2019 and 2023 this marked the end of the bear market." };
+  if (daysSincePeak < 180)
+    return { key: "early-bear", color: "#ef4444", name: "Early bear market",
+      note: "Within 6 months of the top. Historically the steepest declines were still ahead at this stage." };
+  if (daysSincePeak < 330)
+    return { key: "mid-bear", color: "#f97316", name: "Mid bear market",
+      note: "Past bears kept grinding lower for several more months from here." };
+  if (daysSincePeak <= 420)
+    return { key: "bottom-window", color: "#eab308", name: "Historical bottoming window",
+      note: "Past cycle lows came 363 (2018) and 376 (2022) days after the top. This window is where they formed." };
+  return { key: "late", color: "#a855f7", name: "Past the usual bottom timing",
+    note: "Longer than any past bear lasted. Either the bottom is in, or this cycle is breaking the pattern." };
+}
+
+// Realized price = average price at which all coins last moved (CryptoQuant ~ $56K, Nov 2026).
+// Past bear-market lows formed at or below it. Update occasionally.
+const REALIZED_PRICE = 56000;
+
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+
+// VALUE score: how closely today resembles past cycle BOTTOMS (100) vs TOPS (0).
+function valueScore({ price, daysSincePeak, drawdown }) {
+  let t;
+  if (daysSincePeak < 180) t = 0;
+  else if (daysSincePeak < 330) t = (daysSincePeak - 180) / 150;
+  else if (daysSincePeak <= 450) t = 1;
+  else t = Math.max(0.5, 1 - (daysSincePeak - 450) / 300);
+  const parts = {
+    timing: t * 35,                                        // past lows: 363-376 days after top
+    depth: clamp01(-drawdown / 0.8) * 35,                  // past lows: -77% to -84%
+    realized: clamp01((1.5 - price / REALIZED_PRICE) / 0.5) * 30 // at/below realized price = 30
+  };
+  return { score: Math.round(parts.timing + parts.depth + parts.realized), parts };
+}
+
+// TREND score: has the downtrend turned? 100 = strong uptrend, 0 = strong downtrend.
+function trendScore({ price, ma365, history }) {
+  if (!ma365 || !history || history.length < 50) return null;
+  const closes = history.map((p) => p[1]);
+  const ma50 = closes.slice(-50).reduce((a, b) => a + b, 0) / 50;
+  const ago30 = closes[closes.length - 31] || closes[0];
+  const chg30 = price / ago30 - 1;
+  const parts = {
+    ma365: clamp01((price / ma365 - 0.7) / 0.3) * 40,  // reclaiming the 365d avg ended past bears
+    ma50: clamp01((price / ma50 - 0.85) / 0.15) * 30,
+    momentum: clamp01((chg30 + 0.2) / 0.4) * 30
+  };
+  return { score: Math.round(parts.ma365 + parts.ma50 + parts.momentum), parts, ma50, chg30 };
+}
+
+// Plain-language signal from both scores + a 6-point checklist.
+// It is a rule applied to history, NOT an order and NOT advice. Nothing here can trade.
+function marketSignal({ price, daysSincePeak, drawdown, ma365, value, trend, t }) {
+  const checks = [
+    ["Bear market at least ~11 months old", daysSincePeak >= 330, "past lows: 12 months after the top"],
+    ["Down 50%+ from the top", drawdown <= -0.5, "past lows: -77% to -84%"],
+    ["Within 10% of realized price (~$" + Math.round(REALIZED_PRICE / 1000) + "K)", price <= REALIZED_PRICE * 1.1, "where past lows formed"],
+    ["Above its 50-day average", t ? price > t.ma50 : null, "short-term trend turning"],
+    ["Above its 365-day average", ma365 ? price > ma365 : null, "ended the last two bears"],
+    ["Up over the last 30 days", t ? t.chg30 > 0 : null, "momentum"]
+  ];
+  const met = checks.filter((c) => c[1] === true).length;
+  let s;
+  if (trend == null) s = { key: "wait", label: "LOADING", color: "#6b7280", text: "Waiting for price history." };
+  else if (value >= 70 && trend >= 40) s = { key: "buy", label: "BUY ZONE", color: "#16a34a",
+    text: "Cheap vs history AND the trend has turned up. In past cycles this was the strongest time to buy." };
+  else if (value >= 70) s = { key: "scale", label: "EARLY — SMALL BUYS ONLY", color: "#ca8a04",
+    text: "Cheap vs history but still falling. Past cycles dropped another 15–30% from here first. If buying at all, small amounts spread over weeks. Wait for Trend 40+ for the stronger signal." };
+  else if (value < 40 && trend >= 60) s = { key: "sell", label: "TAKE-PROFIT ZONE", color: "#ea580c",
+    text: "Expensive vs history with a hot uptrend. Past cycle tops formed here — the time to sell in pieces, not buy." };
+  else if (value < 40) s = { key: "avoid", label: "SELL / AVOID", color: "#dc2626",
+    text: "Expensive vs history and the trend is rolling over. Historically the worst time to buy." };
+  else s = { key: "hold", label: "HOLD / WAIT", color: "#6b7280",
+    text: "No clear edge either way. History says sit tight." };
+  return { ...s, checks, met };
+}
+
+if (typeof self !== "undefined") {
+  self.marketSignal = marketSignal;
+  self.REALIZED_PRICE = REALIZED_PRICE; self.valueScore = valueScore; self.trendScore = trendScore;
+  self.CYCLES = CYCLES; self.CURRENT_DEFAULT = CURRENT_DEFAULT; self.enrich = enrich;
+  self.cyclePhase = cyclePhase; self.d = d; self.daysBetween = daysBetween;
+  self.NEXT_HALVING_BLOCK = NEXT_HALVING_BLOCK; self.NEXT_HALVING_FALLBACK = NEXT_HALVING_FALLBACK;
+}
+</script>
+<script>// Weekly forecast journal: makes a 7-day price RANGE, grades it a week later,
+// explains misses, and recalibrates how wide its ranges are.
+// Shared by background.js (importScripts) and popup.html.
+
+const WEEK = 7 * 86400000;
+const TARGET_HIT = 0.68; // aim for ~2 of 3 weeks inside the range
+
+// Research saved with the first forecast (from the Nov 22, 2026 review).
+const SEED_NOTE =
+  "Nov 22 2026 research: BTC hit ~$55.1K on Nov 21 (lowest since Sep 2024), bounced to ~$59-60K. " +
+  "Drivers: AI-stock sell-off (Nasdaq erased 2026 gains; heavy Hacker News coverage), record spot-ETF outflows " +
+  "(IBIT record single-day redemption), Fed rate-hike fears before the December meeting, ~$2.5B leveraged liquidations. " +
+  "Binance $6.3B hack (~Oct 30, compromised DevOps laptop; covered on Security Now #1103) - custody risk, no clear price effect; " +
+  "BTC was already falling before it. Security Now #1104/#1105: nothing about Bitcoin itself. " +
+  "Watch: Nasdaq/AI stocks, ETF flows, December FOMC, realized price ~$56K.";
+
+function logReturns(closes) {
+  const r = [];
+  for (let i = 1; i < closes.length; i++) r.push(Math.log(closes[i] / closes[i - 1]));
+  return r;
+}
+
+function makeForecast({ price, history, k, trend, value, ma365 }) {
+  const closes = history.map((p) => p[1]).slice(-31);
+  const r = logReturns(closes);
+  const mean = r.reduce((a, b) => a + b, 0) / r.length;
+  const sd = Math.sqrt(r.reduce((a, b) => a + (b - mean) ** 2, 0) / (r.length - 1));
+  const weekVol = sd * Math.sqrt(7);
+  const half = k * weekVol;
+  return {
+    madeAt: Date.now(), dueAt: Date.now() + WEEK,
+    start: price, low: price * Math.exp(-half), high: price * Math.exp(half),
+    weekVol, k,
+    direction: trend != null && trend >= 50 ? "up" : "down",
+    scoresThen: { value, trend }, ma365Then: ma365 || null,
+    note: "", graded: false
+  };
+}
+
+function gradeForecast(f, { price, history, value, trend, ma365 }) {
+  const hit = price >= f.low && price <= f.high;
+  const moved = price / f.start - 1;
+  const dirOk = (f.direction === "up") === (moved > 0);
+  // biggest single-day move inside the forecast week
+  const wk = history.filter((p) => p[0] >= f.madeAt - 86400000 && p[0] <= f.dueAt + 86400000);
+  let big = 0, bigAt = null;
+  for (let i = 1; i < wk.length; i++) {
+    const m = wk[i][1] / wk[i - 1][1] - 1;
+    if (Math.abs(m) > Math.abs(big)) { big = m; bigAt = wk[i][0]; }
+  }
+  const p = (x) => (x * 100).toFixed(1) + "%";
+  const expected = Math.exp(f.k * f.weekVol) - 1;
+  let why;
+  if (hit) why = `Stayed inside the expected ±${p(expected)} range (moved ${p(moved)}).`;
+  else why = `Moved ${p(moved)} vs expected ±${p(expected)} - ${price > f.high ? "broke above" : "broke below"} the range.`;
+  if (bigAt) why += ` Largest one-day move: ${p(big)} on ${new Date(bigAt).toLocaleDateString()}.`;
+  if (f.scoresThen.trend != null && trend != null)
+    why += ` Trend score ${f.scoresThen.trend} → ${trend}; value score ${f.scoresThen.value} → ${value}.`;
+  if (f.ma365Then && ma365) {
+    const wasAbove = f.start > f.ma365Then, isAbove = price > ma365;
+    if (wasAbove !== isAbove) why += isAbove ? " Price reclaimed the 365-day average." : " Price lost the 365-day average.";
+  }
+  const rHit = f.rLow && f.rHigh ? price >= f.rLow && price <= f.rHigh : null;
+  if (rHit !== null) why += ` Research range ${Math.round(f.rLow).toLocaleString()}-${Math.round(f.rHigh).toLocaleString()}: ${rHit ? "HIT" : "MISS"}.`;
+  return { ...f, graded: true, actual: price, hit, rHit, dirOk, moved, why };
+}
+
+// Widen ranges after misses, tighten after too many easy hits.
+function recalibrate(k, graded) {
+  const recent = graded.slice(-8);
+  if (recent.length < 4) return k;
+  const rate = recent.filter((g) => g.hit).length / recent.length;
+  if (rate < TARGET_HIT - 0.1) return Math.min(k * 1.1, 3);
+  if (rate > TARGET_HIT + 0.15) return Math.max(k * 0.92, 0.5);
+  return k;
+}
+
+if (typeof self !== "undefined") {
+  self.makeForecast = makeForecast; self.gradeForecast = gradeForecast;
+  self.recalibrate = recalibrate; self.SEED_NOTE = SEED_NOTE;
+}
+</script>
+<script>(function(){importScripts("cycles.js", "forecast.js");
+
+const PRICE_URL = "https://api.coinbase.com/v2/prices/BTC-USD/spot";
+const HISTORY_URL = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily";
+const HEIGHT_URL = "https://mempool.space/api/blocks/tip/height";
+
+chrome.runtime.onInstalled.addListener(async () => {
+  const { cycle } = await chrome.storage.local.get("cycle");
+  if (!cycle) await chrome.storage.local.set({ cycle: CURRENT_DEFAULT });
+  const sync = await chrome.storage.sync.get(["alertBelow", "alertAbove", "notifyPhase"]);
+  if (sync.notifyPhase === undefined) await chrome.storage.sync.set({ notifyPhase: true });
+  chrome.alarms.create("tick", { periodInMinutes: 15 });
+  refresh();
+});
+chrome.runtime.onStartup.addListener(refresh);
+chrome.alarms.onAlarm.addListener((a) => { if (a.name === "tick") refresh(); });
+chrome.runtime.onMessage.addListener((msg, _s, reply) => {
+  if (msg === "refresh") { refresh().then(() => reply(true)); return true; }
+});
+
+async function getJSON(url) {
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error(url + " → " + r.status);
+  return r.json();
+}
+
+async function refresh() {
+  const store = await chrome.storage.local.get(["cycle", "ma365", "maAt", "lastPhase", "alertState", "height", "history", "journal"]);
+  const cycle = store.cycle || CURRENT_DEFAULT;
+  let price;
+  try {
+    price = parseFloat((await getJSON(PRICE_URL)).data.amount);
+  } catch (e) {
+    await chrome.storage.local.set({ error: "Price fetch failed: " + e.message });
+    return;
+  }
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+
+  // 365-day moving average + 24h change (refresh every 6 hours; CoinGecko free API is rate-limited)
+  let { ma365, maAt } = store;
+  let history = null;
+  if (!maAt || Date.now() - maAt > 6 * 3600e3) {
+    try {
+      const h = await getJSON(HISTORY_URL);
+      const closes = h.prices.map((p) => p[1]);
+      ma365 = closes.reduce((a, b) => a + b, 0) / closes.length;
+      maAt = Date.now();
+      history = h.prices.slice(-120); // last ~4 months for the sparkline
+    } catch (e) { /* keep old value */ }
+  }
+
+  // Block height → next halving ETA
+  let height = store.height;
+  try { height = parseInt(await (await fetch(HEIGHT_URL)).text(), 10); } catch (e) {}
+
+  // Track new all-time highs and new post-peak lows automatically
+  if (price > cycle.peak) { cycle.peak = price; cycle.peakDate = today; cycle.low = price; cycle.lowDate = today; }
+  else if (price < cycle.low) { cycle.low = price; cycle.lowDate = today; }
+
+  const daysSincePeak = daysBetween(d(cycle.peakDate), now);
+  const drawdown = price / cycle.peak - 1;
+  const aboveMA365 = ma365 ? price > ma365 : null;
+  const phase = cyclePhase({ daysSincePeak, drawdown, aboveMA365 });
+
+  const save = { cycle, price, priceAt: Date.now(), ma365, maAt, height, error: null };
+  if (history) save.history = history;
+  await chrome.storage.local.set(save);
+
+  // Badge: price in $k, coloured by phase
+  chrome.action.setBadgeText({ text: Math.round(price / 1000) + "k" });
+  chrome.action.setBadgeBackgroundColor({ color: phase.color });
+
+  // Notifications
+  const sync = await chrome.storage.sync.get(["alertBelow", "alertAbove", "notifyPhase"]);
+  const state = store.alertState || {};
+  const notify = (id, title, message) =>
+    chrome.notifications.create(id + Date.now(), { type: "basic", iconUrl: "icons/icon128.png", title, message });
+
+  if (sync.alertBelow) {
+    const below = price < sync.alertBelow;
+    if (below && !state.below) notify("below", "BTC below $" + fmt(sync.alertBelow), "Now $" + fmt(price) + " · " + phase.name);
+    state.below = below;
+  }
+  if (sync.alertAbove) {
+    const above = price > sync.alertAbove;
+    if (above && !state.above) notify("above", "BTC above $" + fmt(sync.alertAbove), "Now $" + fmt(price) + " · " + phase.name);
+    state.above = above;
+  }
+  if (sync.notifyPhase && store.lastPhase && store.lastPhase !== phase.key)
+    notify("phase", "Cycle phase changed: " + phase.name, phase.note);
+  await chrome.storage.local.set({ alertState: state, lastPhase: phase.key });
+
+  // Weekly forecast journal
+  const hist = history || store.history;
+  if (!hist || hist.length < 31) return;
+  const journal = store.journal || { k: 1.0, entries: [] };
+  const value = valueScore({ price, daysSincePeak, drawdown }).score;
+  const t = trendScore({ price, ma365, history: hist });
+  const trend = t ? t.score : null;
+  const sig = marketSignal({ price, daysSincePeak, drawdown, ma365, value, trend, t });
+  const { lastSignal } = await chrome.storage.local.get("lastSignal");
+  if (lastSignal && lastSignal !== sig.key) notify("signal", "Signal changed: " + sig.label, sig.text);
+  await chrome.storage.local.set({ lastSignal: sig.key });
+  const open = journal.entries.find((e) => !e.graded);
+  if (open && Date.now() >= open.dueAt) {
+    const g = gradeForecast(open, { price, history: hist, value, trend, ma365 });
+    journal.entries[journal.entries.indexOf(open)] = g;
+    journal.k = recalibrate(journal.k, journal.entries.filter((e) => e.graded));
+    notify("grade", g.hit ? "Weekly forecast: HIT ✓" : "Weekly forecast: MISS ✗", g.why);
+  }
+  if (!journal.entries.find((e) => !e.graded)) {
+    const f = makeForecast({ price, history: hist, k: journal.k, trend, value, ma365 });
+    if (journal.entries.length === 0) f.note = SEED_NOTE;
+    journal.entries.push(f);
+  }
+  journal.entries = journal.entries.slice(-104); // keep 2 years
+  await chrome.storage.local.set({ journal });
+}
+
+function fmt(n) { return Math.round(n).toLocaleString("en-US"); }
+
+})();</script>
+<script>__webInstall().then(() => { const $ = (id) => document.getElementById(id);
+const fmt = (n) => "$" + Math.round(n).toLocaleString("en-US");
+const pct = (x) => (x * 100).toFixed(0) + "%";
+
+async function render() {
+  const s = await chrome.storage.local.get(["cycle", "price", "priceAt", "ma365", "height", "history", "error", "journal"]);
+  if (!s.price || Date.now() - (s.priceAt || 0) > 15 * 60e3) {
+    if (!render.asked) { render.asked = true; chrome.runtime.sendMessage("refresh", () => render()); }
+    if (!s.price) { $("phase").textContent = s.error || "fetching…"; return; }
+  }
+  const cur = s.cycle || CURRENT_DEFAULT;
+  const now = new Date();
+  const price = s.price;
+  const past = CYCLES.map(enrich);
+
+  const daysSinceHalving = daysBetween(d(cur.halving), now);
+  const daysSincePeak = daysBetween(d(cur.peakDate), now);
+  const drawdown = price / cur.peak - 1;
+  const lowDD = cur.low / cur.peak - 1;
+  const aboveMA = s.ma365 ? price > s.ma365 : null;
+  const phase = cyclePhase({ daysSincePeak, drawdown, aboveMA365: aboveMA });
+
+  $("price").textContent = fmt(price);
+  $("dd").innerHTML = `${pct(drawdown)} from the ${fmt(cur.peak)} top · cycle low so far ${fmt(cur.low)}`;
+  $("phase").textContent = phase.name;
+  $("phase").style.background = phase.color;
+  $("phaseNote").textContent = phase.note;
+
+  // Scores
+  const scoreColor = (v) => (v >= 70 ? "#22c55e" : v >= 40 ? "#eab308" : "#ef4444");
+  const v = valueScore({ price, daysSincePeak, drawdown });
+  $("vScore").textContent = v.score; $("vBar").style.width = v.score + "%"; $("vBar").style.background = scoreColor(v.score);
+  $("vNote").textContent = `timing ${v.parts.timing.toFixed(0)}/35 · depth ${v.parts.depth.toFixed(0)}/35 · vs realized ${v.parts.realized.toFixed(0)}/30`;
+  const t = trendScore({ price, ma365: s.ma365, history: s.history });
+  if (t) {
+    $("tScore").textContent = t.score; $("tBar").style.width = t.score + "%"; $("tBar").style.background = scoreColor(t.score);
+    $("tNote").textContent = `365d avg ${t.parts.ma365.toFixed(0)}/40 · 50d avg ${t.parts.ma50.toFixed(0)}/30 · 30d ${pct(t.chg30)}`;
+  } else $("tNote").textContent = "needs price history (loads within a minute)";
+  const sig = marketSignal({ price, daysSincePeak, drawdown, ma365: s.ma365, value: v.score, trend: t ? t.score : null, t });
+  $("signal").style.setProperty("--sig", sig.color);
+  $("sigLabel").textContent = sig.label;
+  $("sigText").textContent = sig.text;
+  $("sigChecks").innerHTML = `<li class="u"><i></i><b>${sig.met} of 6 buy conditions met</b></li>` +
+    sig.checks.map(([l, ok, why]) => `<li class="${ok === true ? "y" : ok === false ? "n" : "u"}"><i>${ok === true ? "✓" : ok === false ? "✗" : "…"}</i>${l}<small>${why}</small></li>`).join("");
+
+  let combo;
+  if (!t) combo = "";
+  else if (v.score >= 70 && t.score < 40) combo = "Cheap vs history, but still falling. In 2018 and 2022 this zone came before a final 15–30% leg down, then multi-year gains.";
+  else if (v.score >= 70 && t.score >= 40) combo = "Cheap vs history and the trend is turning up. In past cycles this was the early recovery.";
+  else if (v.score < 40 && t.score >= 60) combo = "Expensive vs history with a strong uptrend. This is late-cycle territory.";
+  else combo = "Mixed signals — neither clearly cheap nor clearly turning.";
+  $("combo").textContent = combo + " Scores describe history, not the future.";
+
+  $("dHalving").textContent = daysSinceHalving;
+  $("dPeak").textContent = daysSincePeak;
+  if (s.height) {
+    const blocks = NEXT_HALVING_BLOCK - s.height;
+    $("dNext").textContent = Math.round(blocks * 10 / 1440);
+    $("dNext").title = blocks.toLocaleString() + " blocks left (≈10 min each)";
+  } else {
+    $("dNext").textContent = daysBetween(now, d(NEXT_HALVING_FALLBACK));
+  }
+
+  // Bear length bars
+  const maxLen = Math.max(450, daysSincePeak);
+  const lenRows = past.map((c) => [c.id === "2016" ? "2018" : "2022", c.peakToBottom, false, c.peakToBottom + "d"])
+    .concat([["Now", daysSincePeak, true, daysSincePeak + "d"]]);
+  $("lenBars").innerHTML = lenRows.map(([l, v, now, txt]) =>
+    `<div class="bar"><span>${l}</span><div class="track"><div class="fill ${now ? "now" : ""}" style="width:${(v / maxLen) * 100}%"></div></div><span class="v">${txt}</span></div>`).join("");
+
+  // Drawdown bars
+  const ddRows = past.map((c) => [c.id === "2016" ? "2018" : "2022", -c.drawdown, false, pct(c.drawdown)])
+    .concat([["Now", -drawdown, true, pct(drawdown)], ["Low", -lowDD, true, pct(lowDD)]]);
+  $("ddBars").innerHTML = ddRows.map(([l, v, now, txt]) =>
+    `<div class="bar"><span>${l}</span><div class="track"><div class="fill ${now ? "now" : ""}" style="width:${v * 100}%"></div></div><span class="v">${txt}</span></div>`).join("");
+
+  // Side-by-side table
+  const curPeakAfterHalving = daysBetween(d(cur.halving), d(cur.peakDate));
+  const rows = [
+    ["Halving", ...past.map((c) => c.halving.slice(0, 7)), cur.halving.slice(0, 7)],
+    ["Top", ...past.map((c) => fmt(c.peak)), fmt(cur.peak)],
+    ["Days halving → top", ...past.map((c) => c.haltToPeak), curPeakAfterHalving],
+    ["Top ÷ halving price", ...past.map((c) => c.peakMultiple.toFixed(1) + "×"), (cur.peak / cur.halvingPrice).toFixed(1) + "×"],
+    ["Bear low", ...past.map((c) => fmt(c.bottom)), fmt(cur.low) + "*"],
+    ["Days halving → low", ...past.map((c) => c.haltToBottom), daysBetween(d(cur.halving), d(cur.lowDate)) + "*"],
+    ["Low ÷ halving price", ...past.map((c) => (c.bottom / c.halvingPrice).toFixed(1) + "×"), (cur.low / cur.halvingPrice).toFixed(2) + "×"]
+  ];
+  $("table").innerHTML =
+    `<tr><th></th><th>2017</th><th>2021</th><th class="now">2025</th></tr>` +
+    rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="now">${r[3]}</td></tr>`).join("") +
+    `<tr><td colspan="4" class="muted small" style="text-align:left">* lowest so far — may not be the final bottom</td></tr>`;
+
+  // Trend
+  if (s.ma365) {
+    $("ma").innerHTML = `365-day average: <b>${fmt(s.ma365)}</b> — price is <b style="color:${aboveMA ? "#22c55e" : "#ef4444"}">${aboveMA ? "above" : "below"}</b> it (${pct(price / s.ma365 - 1)}). Reclaiming it ended the last two bear markets.`;
+  } else $("ma").textContent = "365-day average loading…";
+  drawSpark(s.history, s.ma365);
+
+  renderJournal(s.journal);
+  $("updated").textContent = "Updated " + new Date(s.priceAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function drawSpark(hist, ma) {
+  const c = $("spark"); if (!hist || hist.length < 2) return;
+  const dpr = window.devicePixelRatio || 1;
+  c.width = c.clientWidth * dpr; c.height = 60 * dpr;
+  const g = c.getContext("2d"); g.scale(dpr, dpr);
+  const W = c.clientWidth, H = 60, v = hist.map((p) => p[1]);
+  const lo = Math.min(...v, ma || Infinity) * 0.98, hi = Math.max(...v, ma || 0) * 1.02;
+  const y = (p) => H - ((p - lo) / (hi - lo)) * H;
+  if (ma) { g.strokeStyle = "#4b5563"; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(0, y(ma)); g.lineTo(W, y(ma)); g.stroke(); g.setLineDash([]); }
+  g.strokeStyle = "#f7931a"; g.lineWidth = 1.5; g.beginPath();
+  v.forEach((p, i) => { const x = (i / (v.length - 1)) * W; i ? g.lineTo(x, y(p)) : g.moveTo(x, y(p)); });
+  g.stroke();
+}
+
+function renderJournal(j) {
+  if (!j || !j.entries.length) { $("fc").textContent = "First forecast is made once 30 days of price history load."; return; }
+  const open = j.entries.find((e) => !e.graded);
+  const day = (t) => new Date(t).toLocaleDateString([], { month: "short", day: "numeric" });
+  if (open) {
+    $("fc").innerHTML = `<div class="muted small">Made ${day(open.madeAt)} at ${fmt(open.start)} · graded ${day(open.dueAt)}</div>
+      <div class="range">${fmt(open.low)} – ${fmt(open.high)}</div>
+      <div class="small">Expected range by ${day(open.dueAt)} (~${Math.round(68)}% target hit rate, width ×${open.k.toFixed(2)}). Lean: <b>${open.direction}</b> (from trend score).</div>`;
+    if (document.activeElement !== $("fcNote")) $("fcNote").value = open.note || "";
+    if (open.rLow) { $("rLow").value = open.rLow; $("rHigh").value = open.rHigh; }
+  }
+  const g = j.entries.filter((e) => e.graded);
+  if (g.length) {
+    const hits = g.filter((e) => e.hit).length, dir = g.filter((e) => e.dirOk).length;
+    $("track").innerHTML = `Track record: <b>${hits}/${g.length}</b> weeks in range (${Math.round(hits / g.length * 100)}%) · direction right <b>${dir}/${g.length}</b> (coin flip = 50%)` +
+      (g.some((e) => e.rHit !== null && e.rHit !== undefined) ? ` · research range ${g.filter((e) => e.rHit).length}/${g.filter((e) => e.rHit !== null && e.rHit !== undefined).length}` : "");
+  } else $("track").textContent = "Track record: no graded weeks yet.";
+  $("log").innerHTML = g.slice(-6).reverse().map((e) => `<div class="entry ${e.hit ? "hit" : "miss"}">
+    <b>${day(e.madeAt)}–${day(e.dueAt)}: ${e.hit ? "HIT" : "MISS"}</b> · range ${fmt(e.low)}–${fmt(e.high)} · actual ${fmt(e.actual)}<br>
+    ${e.why}${e.note ? `<br><span class="muted">Notes: ${e.note.replace(/</g, "&lt;")}</span>` : ""}</div>`).join("");
+}
+
+$("saveNote").onclick = async () => {
+  const { journal } = await chrome.storage.local.get("journal");
+  const open = journal && journal.entries.find((e) => !e.graded);
+  if (!open) return;
+  open.note = $("fcNote").value;
+  const lo = parseFloat($("rLow").value), hi = parseFloat($("rHigh").value);
+  if (lo && hi && lo < hi) { open.rLow = lo; open.rHigh = hi; } else { delete open.rLow; delete open.rHigh; }
+  await chrome.storage.local.set({ journal });
+  $("noteSaved").textContent = "Saved ✓";
+};
+$("export").onclick = async () => {
+  const { journal } = await chrome.storage.local.get("journal");
+  const url = URL.createObjectURL(new Blob([JSON.stringify(journal, null, 2)], { type: "application/json" }));
+  const a = document.createElement("a"); a.href = url; a.download = "btc-forecast-journal.json"; a.click();
+};
+
+async function loadAlerts() {
+  const a = await chrome.storage.sync.get(["alertBelow", "alertAbove", "notifyPhase"]);
+  $("alertBelow").value = a.alertBelow || ""; $("alertAbove").value = a.alertAbove || "";
+  $("notifyPhase").checked = a.notifyPhase !== false;
+}
+$("save").onclick = async () => {
+  await chrome.storage.sync.set({
+    alertBelow: parseFloat($("alertBelow").value) || null,
+    alertAbove: parseFloat($("alertAbove").value) || null,
+    notifyPhase: $("notifyPhase").checked
+  });
+  $("saved").textContent = "Saved ✓";
+};
+$("refresh").onclick = (e) => { e.preventDefault(); chrome.runtime.sendMessage("refresh", () => render()); };
+
+loadAlerts();
+render();
+
+
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { render.asked = false; render(); } });
+ });</script>
+</body></html>
