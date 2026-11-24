@@ -55,7 +55,17 @@ export async function techLink(daily) {
       ndx = new Map(csv.trim().split("\n").slice(1).map((l) => l.split(",")).filter((c) => c.length === 2 && c[1] !== "" && c[1] !== "." && !isNaN(+c[1])).map((c) => [c[0], +c[1]]).slice(-150));
       src = "FRED";
     } catch (e) { console.log("tech fred failed:", e.message); }
-    if (ndx.size < 40) {
+    try {
+      const j = await json("https://query1.finance.yahoo.com/v8/finance/chart/%5ENDX?range=6mo&interval=1d");
+      const r = j.chart.result[0], cl = r.indicators.quote[0].close, y = new Map();
+      r.timestamp.forEach((t, i) => { if (cl[i] != null) y.set(new Date(t * 1000).toISOString().slice(0, 10), cl[i]); });
+      const overlap = [...ndx.keys()].filter((d) => y.has(d)).slice(-5);
+      const agree = overlap.length >= 3 && overlap.every((d) => Math.abs(y.get(d) / ndx.get(d) - 1) < 0.005);
+      const yLast = [...y.keys()].sort().pop(), fLast = [...ndx.keys()].sort().pop();
+      console.log("tech yahoo last", [...y.entries()].sort().slice(-4).map((x) => x[0] + "=" + Math.round(x[1])).join(" "), "agree", agree);
+      if ((ndx.size < 40 || (agree && yLast > fLast))) { ndx = y; src = "Yahoo"; }
+    } catch (e) { console.log("tech yahoo failed:", e.message); }
+    if (false) {
       try {
         const j = await json("https://query1.finance.yahoo.com/v8/finance/chart/%5ENDX?range=6mo&interval=1d");
         const r = j.chart.result[0], cl = r.indicators.quote[0].close;
