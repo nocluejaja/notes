@@ -80,10 +80,10 @@ const value = valueScore({ price, daysSincePeak, drawdown }).score;
 const t = trendScore({ price, ma365, history });
 const trend = t ? t.score : null;
 const sig = marketSignal({ price, daysSincePeak, drawdown, ma365, value, trend, t });
-const line = `${money(price)} · Value ${value} · Trend ${trend} · ${sig.met}/6 conditions`;
-console.log(line, "|", sig.label);
+const line = `${money(price)} · ${sig.met}/6 conditions`;
+console.log(line, "| value", value, "trend", trend, "|", sig.label);
 
-if (process.env.TEST === "1") await push("Test alert ✓", `Notifications are connected. Right now: ${sig.label}. ${line}`, ["bell"]);
+if (process.env.TEST === "1") await push("Test alert ✓", `Right now: ${sig.label}. ${line}`, ["bell"]);
 if (first) await push("BTC alerts connected ✓", `You'll get alerts here. Right now: ${sig.label}. ${line}`, ["white_check_mark"]);
 
 // 1) Signal changed
