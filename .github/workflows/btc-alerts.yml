@@ -22,10 +22,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install web-push
+        run: npm install --no-save --prefix alerts web-push@3.6.7
       - name: Check BTC and send alerts
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           TEST: ${{ inputs.test && '1' || '0' }}
+          PUSH_SUB: ${{ secrets.PUSH_SUB }}
+          VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}
         run: node alerts/check.mjs
       - name: Save alert state
         run: |

@@ -11,6 +11,17 @@ const STATE = path.join(here, "state.json");
 const MARKET = path.join(here, "market.json");
 const CONFIG = JSON.parse(fs.readFileSync(path.join(here, "config.json"), "utf8"));
 const TOPIC = process.env.NTFY_TOPIC;
+const PUSH_SUB = process.env.PUSH_SUB;
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE;
+const VAPID_PUBLIC = "BAsCDleygp5gr1UpTYrC9mAy2FgxzCRNb5q1CwSmBo777ANXFPy0XGP2l-UbBzgrk7FWqkms7mboxAEuqlPZel8";
+let webpush = null;
+if (PUSH_SUB && VAPID_PRIVATE) {
+  try {
+    const { createRequire } = await import("node:module");
+    webpush = createRequire(import.meta.url)("web-push");
+    webpush.setVapidDetails(CONFIG.appUrl, VAPID_PUBLIC, VAPID_PRIVATE);
+  } catch (e) { console.log("web-push unavailable:", e.message); webpush = null; }
+}
 const DRY = process.env.DRY_RUN === "1";
 const money = (n) => "$" + Math.round(n).toLocaleString("en-US");
 
@@ -22,7 +33,14 @@ async function getJSON(url) {
 
 async function push(title, message, tags = [], priority = 3) {
   console.log("NOTIFY:", title, "|", message);
-  if (DRY || !TOPIC) return;
+  if (DRY) return;
+  if (webpush) {
+    try {
+      await webpush.sendNotification(JSON.parse(PUSH_SUB), JSON.stringify({ title, body: message, url: CONFIG.appUrl }), { TTL: 6 * 3600, urgency: priority >= 4 ? "high" : "normal" });
+      console.log("web push sent");
+    } catch (e) { console.log("web push failed:", e.statusCode, e.body || e.message, e.statusCode === 410 ? "(subscription expired - tap Enable notifications again and update PUSH_SUB)" : ""); }
+  }
+  if (!TOPIC) return;
   await fetch("https://ntfy.sh/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

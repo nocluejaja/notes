@@ -85,7 +85,10 @@ button.ghost { background: transparent; color: var(--btc); border: 1px solid var
 
 body{width:auto;max-width:560px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));font-size:14px;-webkit-text-size-adjust:100%}
 input,textarea{font-size:16px!important}
-.phase{max-width:190px}</style></head><body>
+.phase{max-width:190px}
+.pushbox { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 12px 0; }
+.pushbox p { margin: 4px 0 8px; } .pushbox textarea { font-size: 12px !important; font-family: ui-monospace, monospace; }
+</style></head><body>
   <header>
     <div>
       <div class="muted small">BTC / USD</div>
@@ -123,6 +126,17 @@ input,textarea{font-size:16px!important}
   <h2>Cycle side-by-side</h2>
   <table id="table"></table>
 
+  <section id="pushBox" class="pushbox">
+  <b>Phone notifications</b>
+  <p id="pushStatus" class="small muted">Checking…</p>
+  <button id="pushBtn" type="button" hidden>Enable notifications</button>
+  <div id="pushCodeWrap" hidden>
+    <p class="small">Last step: copy this code and save it in GitHub as the secret <b>PUSH_SUB</b>.</p>
+    <textarea id="pushCode" rows="4" readonly></textarea>
+    <button id="pushCopy" type="button">Copy code</button> <span id="pushCopied" class="small muted"></span>
+  </div>
+</section>
+
   <h2>Market mood &amp; key levels</h2>
   <div id="mood" class="mood"><span class="muted small">Loading…</span></div>
 
@@ -155,7 +169,7 @@ input,textarea{font-size:16px!important}
   <div id="log"></div>
 
   <details>
-    <summary>Alerts</summary><p class='muted small'>Phone alerts come from the ntfy app (hourly checker). Settings here only apply to the desktop extension.</p>
+    <summary>Alerts</summary><p class='muted small'>Phone alerts are sent by the hourly checker (see Phone notifications above). These settings only apply to the desktop extension.</p>
     <label>Notify if BTC drops below $ <input id="alertBelow" type="number" placeholder="e.g. 50000"></label>
     <label>Notify if BTC rises above $ <input id="alertAbove" type="number" placeholder="e.g. 80000"></label>
     <label class="row"><input id="notifyPhase" type="checkbox"> Notify when the cycle phase changes</label>
@@ -776,4 +790,43 @@ render();
 
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { render.asked = false; render(); } });
 });</script>
+<script>(function () {
+  const VAPID_PUBLIC = "BAsCDleygp5gr1UpTYrC9mAy2FgxzCRNb5q1CwSmBo777ANXFPy0XGP2l-UbBzgrk7FWqkms7mboxAEuqlPZel8";
+  const $p = (id) => document.getElementById(id);
+  const status = (t) => { $p("pushStatus").textContent = t; };
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const b64ToBytes = (s) => { s = s.replace(/-/g, "+").replace(/_/g, "/"); s += "=".repeat((4 - s.length % 4) % 4); return Uint8Array.from(atob(s), (c) => c.charCodeAt(0)); };
+  function showCode(sub) { $p("pushCode").value = JSON.stringify(sub); $p("pushCodeWrap").hidden = false; }
+  async function init() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+      status(standalone ? "This iPhone can't receive web app notifications (needs iOS 16.4 or newer)." : "Open BTC TRACKER from your home-screen icon to turn on notifications.");
+      return;
+    }
+    let reg;
+    try { reg = await navigator.serviceWorker.register("sw.js"); } catch (e) { status("Couldn't set up notifications: " + e.message); return; }
+    const existing = await reg.pushManager.getSubscription();
+    if (existing && Notification.permission === "granted") {
+      status("Notifications are on for this phone ✓"); showCode(existing);
+      $p("pushCodeWrap").querySelector("p").innerHTML = "If alerts aren't arriving, make sure this code is saved in GitHub as the secret <b>PUSH_SUB</b>.";
+      return;
+    }
+    if (Notification.permission === "denied") { status("Notifications are blocked. Turn them on in iPhone Settings → Notifications → BTC TRACKER."); return; }
+    status("Get alerts when the signal changes, price levels break, and each Sunday's research.");
+    $p("pushBtn").hidden = false;
+    $p("pushBtn").onclick = async () => {
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") { status("Notifications weren't allowed."); return; }
+        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+        $p("pushBtn").hidden = true; status("Allowed ✓"); showCode(sub);
+      } catch (e) { status("Couldn't turn on notifications: " + e.message); }
+    };
+  }
+  $p("pushCopy").onclick = async () => {
+    try { await navigator.clipboard.writeText($p("pushCode").value); $p("pushCopied").textContent = "Copied ✓"; }
+    catch (e) { $p("pushCode").select(); $p("pushCopied").textContent = "Select all and copy"; }
+  };
+  init();
+})();
+</script>
 </body></html>
