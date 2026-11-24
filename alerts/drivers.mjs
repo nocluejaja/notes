@@ -49,18 +49,20 @@ export async function etfFlows() {
 export async function techLink(daily) {
   try {
     let ndx = new Map(), src = "";
+    // FRED (St. Louis Fed) official daily closes first; Yahoo as backup.
     try {
-      const j = await json("https://query1.finance.yahoo.com/v8/finance/chart/%5ENDX?range=6mo&interval=1d");
-      const r = j.chart.result[0], cl = r.indicators.quote[0].close;
-      r.timestamp.forEach((t, i) => { if (cl[i] != null) ndx.set(new Date(t * 1000).toISOString().slice(0, 10), cl[i]); });
-      src = "Yahoo";
-    } catch (e) { console.log("tech yahoo failed:", e.message); }
+      const csv = await text("https://fred.stlouisfed.org/graph/fredgraph.csv?id=NASDAQ100");
+      ndx = new Map(csv.trim().split("\n").slice(1).map((l) => l.split(",")).filter((c) => c.length === 2 && c[1] !== "" && c[1] !== "." && !isNaN(+c[1])).map((c) => [c[0], +c[1]]).slice(-150));
+      src = "FRED";
+    } catch (e) { console.log("tech fred failed:", e.message); }
     if (ndx.size < 40) {
       try {
-        const csv = await text("https://fred.stlouisfed.org/graph/fredgraph.csv?id=NASDAQ100");
-        ndx = new Map(csv.trim().split("\n").slice(1).map((l) => l.split(",")).filter((c) => c.length === 2 && !isNaN(+c[1]) && c[1] !== "").map((c) => [c[0], +c[1]]).slice(-150));
-        src = "FRED";
-      } catch (e) { console.log("tech fred failed:", e.message); }
+        const j = await json("https://query1.finance.yahoo.com/v8/finance/chart/%5ENDX?range=6mo&interval=1d");
+        const r = j.chart.result[0], cl = r.indicators.quote[0].close;
+        ndx = new Map();
+        r.timestamp.forEach((t, i) => { if (cl[i] != null) ndx.set(new Date(t * 1000).toISOString().slice(0, 10), cl[i]); });
+        src = "Yahoo";
+      } catch (e) { console.log("tech yahoo failed:", e.message); }
     }
     if (ndx.size < 40) { console.log("tech: too little data"); return null; }
     const btc = new Map(daily.map(([ms, c]) => [new Date(ms).toISOString().slice(0, 10), c]));
@@ -74,6 +76,7 @@ export async function techLink(daily) {
     const nd = [...ndx.entries()].sort((a, b) => a[0].localeCompare(b[0]));
     const [lastD, lastV] = nd[nd.length - 1], prevV = nd[nd.length - 2][1], wkV = nd[nd.length - 6][1], moV = nd[Math.max(0, nd.length - 22)][1];
     const bLast = pairs.length ? pairs[pairs.length - 1] : [null, null];
+    console.log("tech", src, "last", nd.slice(-3).map((x) => x.join("=")).join(" "));
     return { src, date: lastD, ndxDay: lastV / prevV - 1, ndxWeek: lastV / wkV - 1, ndxMonth: lastV / moV - 1, btcDay: bLast[1], corr30: sxy / Math.sqrt(sxx * syy) };
   } catch (e) { console.log("tech failed:", e.message); return null; }
 }
