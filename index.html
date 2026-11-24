@@ -65,6 +65,21 @@ button.ghost { background: transparent; color: var(--btc); border: 1px solid var
 .signal li small { color: var(--muted); margin-left: auto; text-align: right; }
 .sigFoot { font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 6px; }
 
+.mood { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mood > div { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.mood b { font-size: 18px; display: block; } .mood small { color: var(--muted); font-size: 10.5px; }
+.mood a { color: var(--muted); }
+.events { display: grid; gap: 4px; }
+.events div { display: flex; justify-content: space-between; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+.events .fed { border-color: #b45309; } .events em { font-style: normal; color: var(--btc); white-space: nowrap; }
+.buysum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px; }
+.buysum div { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; text-align: center; }
+.buysum b { display: block; font-size: 15px; } .buysum span { font-size: 10.5px; color: var(--muted); }
+.buyform { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: 4px; margin-bottom: 6px; }
+.buyform input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px; font: inherit; font-size: 12px; }
+.buyrow { display: flex; justify-content: space-between; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); padding: 4px 0; }
+.buyrow button { background: transparent; color: var(--muted); border: 1px solid var(--line); padding: 2px 8px; font-weight: 400; }
+
 body{width:auto;max-width:560px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));font-size:14px;-webkit-text-size-adjust:100%}
 input,textarea{font-size:16px!important}
 .phase{max-width:190px}</style></head><body>
@@ -105,6 +120,22 @@ input,textarea{font-size:16px!important}
   <h2>Cycle side-by-side</h2>
   <table id="table"></table>
 
+  <h2>Market mood &amp; key levels</h2>
+  <div id="mood" class="mood"><span class="muted small">Loading…</span></div>
+
+  <h2>Coming up</h2>
+  <div id="events" class="events"><span class="muted small">Loading…</span></div>
+
+  <section id="buys"><h2>My buys</h2>
+  <div id="buySummary" class="buysum"></div>
+  <form id="buyForm" class="buyform">
+    <input id="bDate" type="date" aria-label="Date">
+    <input id="bUsd" type="number" step="any" placeholder="$ spent" aria-label="Dollars spent">
+    <input id="bPrice" type="number" step="any" placeholder="BTC price" aria-label="BTC price">
+    <button type="submit">Add buy</button>
+  </form>
+  <div id="buyList" class="small"></div></section>
+
   <h2>Trend</h2>
   <div id="ma" class="small"></div>
   <canvas id="spark" width="340" height="60"></canvas>
@@ -120,7 +151,7 @@ input,textarea{font-size:16px!important}
   <div id="log"></div>
 
   <details>
-    <summary>Alerts</summary><p class='muted small'>Alerts need the desktop extension or the Scriptable widget — Safari home-screen apps can't notify in the background.</p>
+    <summary>Alerts</summary><p class='muted small'>Phone alerts come from the ntfy app (hourly checker). Settings here only apply to the desktop extension.</p>
     <label>Notify if BTC drops below $ <input id="alertBelow" type="number" placeholder="e.g. 50000"></label>
     <label>Notify if BTC rises above $ <input id="alertAbove" type="number" placeholder="e.g. 80000"></label>
     <label class="row"><input id="notifyPhase" type="checkbox"> Notify when the cycle phase changes</label>
@@ -610,6 +641,8 @@ async function render() {
   drawSpark(s.history, s.ma365);
 
   renderJournal(s.journal);
+  renderMarket(price);
+  renderBuys(price);
   $("updated").textContent = "Updated " + new Date(s.priceAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
@@ -665,6 +698,51 @@ $("export").onclick = async () => {
   const a = document.createElement("a"); a.href = url; a.download = "btc-forecast-journal.json"; a.click();
 };
 
+const MARKET_URL = "https://raw.githubusercontent.com/nocluejaja/notes/main/alerts/market.json";
+async function renderMarket(price) {
+  let m;
+  try { m = await (await fetch(MARKET_URL, { cache: "no-store" })).json(); } catch (e) { $("mood").innerHTML = '<span class="muted small">Market data unavailable right now.</span>'; $("events").textContent = ""; return; }
+  const f = m.fng, ma = m.ma200w;
+  const fColor = !f ? "var(--muted)" : f.value <= 24 ? "#ef4444" : f.value <= 44 ? "#f97316" : f.value <= 55 ? "#eab308" : f.value <= 75 ? "#84cc16" : "#22c55e";
+  $("mood").innerHTML =
+    `<div><b style="color:${fColor}">${f ? f.value + " · " + f.label : "—"}</b><small>Fear &amp; Greed (yesterday ${f ? f.prev : "—"}). Lows often came in Extreme Fear. Data: <a href="https://alternative.me/crypto/fear-and-greed-index/">Alternative.me</a></small></div>` +
+    `<div><b>${ma ? fmt(ma) : "—"}</b><small>200-week average · price is ${ma ? `<b style="display:inline;font-size:inherit;color:${price > ma ? "#22c55e" : "#ef4444"}">${pct(Math.abs(price / ma - 1))}</b> ${price > ma ? "above" : "below"}` : "—"}. 2022's low came ~30% below it.</small></div>`;
+  const evs = (m.events || []).filter((e) => Date.parse(e.date) > Date.now() - 3 * 3600e3);
+  $("events").innerHTML = evs.length ? evs.slice(0, 5).map((e) => {
+    const days = Math.ceil((Date.parse(e.date) - Date.now()) / 86400e3);
+    const when = new Date(e.date).toLocaleDateString([], { month: "short", day: "numeric" });
+    return `<div class="${e.kind === "fed" ? "fed" : ""}"><span>${e.name.replace(/</g, "&lt;")}</span><em>${when} · ${days <= 0 ? "today" : days === 1 ? "tomorrow" : "in " + days + "d"}</em></div>`;
+  }).join("") : '<span class="muted small">No events listed.</span>';
+}
+
+async function renderBuys(price) {
+  const { buys = [] } = await chrome.storage.local.get("buys");
+  if (!$("bDate").value) $("bDate").value = new Date().toLocaleDateString("en-CA");
+  if (!$("bPrice").value && price) $("bPrice").placeholder = "BTC price (" + Math.round(price) + ")";
+  const usd = buys.reduce((a, b) => a + b.usd, 0), btc = buys.reduce((a, b) => a + b.usd / b.price, 0);
+  const val = btc * price, pl = val - usd;
+  $("buySummary").innerHTML = buys.length ?
+    `<div><b>${fmt(usd)}</b><span>invested</span></div><div><b>${btc.toFixed(6)}</b><span>BTC · avg ${fmt(usd / btc)}</span></div>` +
+    `<div><b style="color:${pl >= 0 ? "#22c55e" : "#ef4444"}">${pl >= 0 ? "+" : "−"}${fmt(Math.abs(pl))}</b><span>${pct(val / usd - 1)} now</span></div>` :
+    '<div style="grid-column:1/-1"><span>Log each buy you make on your exchange to track your average price. Saved on this device only.</span></div>';
+  $("buyList").innerHTML = buys.map((b, i) => `<div class="buyrow"><span>${b.date} · ${fmt(b.usd)} @ ${fmt(b.price)} = ${(b.usd / b.price).toFixed(6)} BTC</span><button data-i="${i}" aria-label="Delete buy">✕</button></div>`).reverse().join("");
+  $("buyList").querySelectorAll("button").forEach((btn) => btn.onclick = async () => {
+    const { buys = [] } = await chrome.storage.local.get("buys");
+    buys.splice(+btn.dataset.i, 1); await chrome.storage.local.set({ buys }); renderBuys(price);
+  });
+}
+$("buyForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const usd = parseFloat($("bUsd").value), p = parseFloat($("bPrice").value) || (await chrome.storage.local.get("price")).price;
+  if (!(usd > 0) || !(p > 0)) return;
+  const { buys = [] } = await chrome.storage.local.get("buys");
+  buys.push({ date: $("bDate").value || new Date().toLocaleDateString("en-CA"), usd, price: p });
+  buys.sort((a, b) => a.date.localeCompare(b.date));
+  await chrome.storage.local.set({ buys });
+  $("bUsd").value = ""; $("bPrice").value = "";
+  renderBuys((await chrome.storage.local.get("price")).price);
+});
+
 async function loadAlerts() {
   const a = await chrome.storage.sync.get(["alertBelow", "alertAbove", "notifyPhase"]);
   $("alertBelow").value = a.alertBelow || ""; $("alertAbove").value = a.alertAbove || "";
@@ -683,7 +761,6 @@ $("refresh").onclick = (e) => { e.preventDefault(); chrome.runtime.sendMessage("
 loadAlerts();
 render();
 
-
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { render.asked = false; render(); } });
- });</script>
+});</script>
 </body></html>
