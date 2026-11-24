@@ -1,5 +1,5 @@
-// Hourly BTC checker: sends push notifications to the ntfy app. Read-only - never trades.
-// Runs on GitHub Actions. The ntfy channel name comes from the NTFY_TOPIC secret.
+// Hourly checker: sends push notifications to the home-screen app. Read-only - never trades.
+// Runs on GitHub Actions. Sends web push to the home-screen app (PUSH_SUB + VAPID_PRIVATE secrets).
 import fs from "node:fs";
 import vm from "node:vm";
 import path from "node:path";
@@ -10,7 +10,6 @@ for (const f of ["lib/cycles.js", "lib/forecast.js"]) vm.runInThisContext(fs.rea
 const STATE = path.join(here, "state.json");
 const MARKET = path.join(here, "market.json");
 const CONFIG = JSON.parse(fs.readFileSync(path.join(here, "config.json"), "utf8"));
-const TOPIC = process.env.NTFY_TOPIC;
 const PUSH_SUB = process.env.PUSH_SUB;
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE;
 const VAPID_PUBLIC = "BAsCDleygp5gr1UpTYrC9mAy2FgxzCRNb5q1CwSmBo777ANXFPy0XGP2l-UbBzgrk7FWqkms7mboxAEuqlPZel8";
@@ -40,12 +39,6 @@ async function push(title, message, tags = [], priority = 3) {
       console.log("web push sent");
     } catch (e) { console.log("web push failed:", e.statusCode, e.body || e.message, e.statusCode === 410 ? "(subscription expired - tap Enable notifications again and update PUSH_SUB)" : ""); }
   }
-  if (!TOPIC) return;
-  await fetch("https://ntfy.sh/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ topic: TOPIC, title, message, tags, priority, click: CONFIG.appUrl })
-  });
 }
 
 // Daily closes for ~1 year from Coinbase (two 300-candle pages), oldest first.
@@ -90,7 +83,7 @@ const sig = marketSignal({ price, daysSincePeak, drawdown, ma365, value, trend, 
 const line = `${money(price)} · Value ${value} · Trend ${trend} · ${sig.met}/6 conditions`;
 console.log(line, "|", sig.label);
 
-if (process.env.TEST === "1") await push("Test alert ✓", `ntfy is connected. Right now: ${sig.label}. ${line}`, ["bell"]);
+if (process.env.TEST === "1") await push("Test alert ✓", `Notifications are connected. Right now: ${sig.label}. ${line}`, ["bell"]);
 if (first) await push("BTC alerts connected ✓", `You'll get alerts here. Right now: ${sig.label}. ${line}`, ["white_check_mark"]);
 
 // 1) Signal changed
