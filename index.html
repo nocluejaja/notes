@@ -80,6 +80,9 @@ button.ghost { background: transparent; color: var(--btc); border: 1px solid var
 .buyrow { display: flex; justify-content: space-between; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); padding: 4px 0; }
 .buyrow button { background: transparent; color: var(--muted); border: 1px solid var(--line); padding: 2px 8px; font-weight: 400; }
 
+.research { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--btc); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 12px; }
+.research:empty { display: none; }
+
 body{width:auto;max-width:560px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));font-size:14px;-webkit-text-size-adjust:100%}
 input,textarea{font-size:16px!important}
 .phase{max-width:190px}</style></head><body>
@@ -141,6 +144,7 @@ input,textarea{font-size:16px!important}
   <canvas id="spark" width="340" height="60"></canvas>
 
   <h2>Weekly forecast</h2>
+  <div id="research" class="research"></div>
   <div id="fc" class="fc"></div>
   <label class="small muted">Research notes for this week (saved with the forecast)
     <textarea id="fcNote" rows="3"></textarea></label>
@@ -642,6 +646,7 @@ async function render() {
 
   renderJournal(s.journal);
   renderMarket(price);
+  renderResearch();
   renderBuys(price);
   $("updated").textContent = "Updated " + new Date(s.priceAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
@@ -713,6 +718,14 @@ async function renderMarket(price) {
     const when = new Date(e.date).toLocaleDateString([], { month: "short", day: "numeric" });
     return `<div class="${e.kind === "fed" ? "fed" : ""}"><span>${e.name.replace(/</g, "&lt;")}</span><em>${when} · ${days <= 0 ? "today" : days === 1 ? "tomorrow" : "in " + days + "d"}</em></div>`;
   }).join("") : '<span class="muted small">No events listed.</span>';
+}
+
+async function renderResearch() {
+  try {
+    const r = await (await fetch(MARKET_URL.replace("market.json", "research.json"), { cache: "no-store" })).json();
+    const esc = (x) => String(x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    $("research").innerHTML = `<b>Sunday research (${esc(r.date)}):</b> range ${fmt(r.low)} – ${fmt(r.high)}, lean ${esc(r.lean || "—")}<br><span class="muted">${esc(r.summary)}</span>`;
+  } catch (e) { $("research").textContent = ""; }
 }
 
 async function renderBuys(price) {

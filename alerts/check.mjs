@@ -72,6 +72,7 @@ const sig = marketSignal({ price, daysSincePeak, drawdown, ma365, value, trend, 
 const line = `${money(price)} · Value ${value} · Trend ${trend} · ${sig.met}/6 conditions`;
 console.log(line, "|", sig.label);
 
+if (process.env.TEST === "1") await push("Test alert ✓", `ntfy is connected. Right now: ${sig.label}. ${line}`, ["bell"]);
 if (first) await push("BTC alerts connected ✓", `You'll get alerts here. Right now: ${sig.label}. ${line}`, ["white_check_mark"]);
 
 // 1) Signal changed
@@ -132,6 +133,11 @@ if (open && Date.now() >= open.dueAt) {
 if (!j.entries.find((e) => !e.graded)) {
   const f = makeForecast({ price, history, k: j.k, trend, value, ma365 });
   if (j.entries.length === 0) { f.note = SEED_NOTE; f.rLow = CONFIG.researchRange?.[0]; f.rHigh = CONFIG.researchRange?.[1]; }
+  // Attach the latest Sunday research (alerts/research.json) if it's from the last 3 days
+  try {
+    const r = JSON.parse(fs.readFileSync(path.join(here, "research.json"), "utf8"));
+    if (Date.now() - Date.parse(r.date) < 3 * 86400e3 && r.low < r.high) { f.rLow = r.low; f.rHigh = r.high; f.note = r.summary; }
+  } catch (e) {}
   j.entries.push(f);
   if (!first) await push("New weekly forecast", `${money(f.low)} – ${money(f.high)} by ${new Date(f.dueAt).toDateString()} · lean ${f.direction}`, ["crystal_ball"]);
 }
