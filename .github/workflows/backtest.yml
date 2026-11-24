@@ -1,0 +1,31 @@
+name: Notes report
+on:
+  schedule:
+    - cron: "23 9 1 * *"   # monthly, 1st of the month
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: btc-alerts
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run report
+        run: node alerts/backtest.mjs
+      - name: Save report
+        run: |
+          if [ -n "$(git status --porcelain alerts/)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+            git add alerts/backtest.json
+            git commit -m "Update report [skip ci]"
+            git pull --rebase -q
+            git push
+          fi

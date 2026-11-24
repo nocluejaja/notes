@@ -79,7 +79,7 @@ const REALIZED_PRICE = 56000;
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 
 // VALUE score: how closely today resembles past cycle BOTTOMS (100) vs TOPS (0).
-function valueScore({ price, daysSincePeak, drawdown }) {
+function valueScore({ price, daysSincePeak, drawdown, realized = REALIZED_PRICE }) {
   let t;
   if (daysSincePeak < 180) t = 0;
   else if (daysSincePeak < 330) t = (daysSincePeak - 180) / 150;
@@ -88,7 +88,7 @@ function valueScore({ price, daysSincePeak, drawdown }) {
   const parts = {
     timing: t * 35,                                        // past lows: 363-376 days after top
     depth: clamp01(-drawdown / 0.8) * 35,                  // past lows: -77% to -84%
-    realized: clamp01((1.5 - price / REALIZED_PRICE) / 0.5) * 30 // at/below realized price = 30
+    realized: clamp01((1.5 - price / realized) / 0.5) * 30 // at/below realized price = 30
   };
   return { score: Math.round(parts.timing + parts.depth + parts.realized), parts };
 }
@@ -110,11 +110,11 @@ function trendScore({ price, ma365, history }) {
 
 // Plain-language signal from both scores + a 6-point checklist.
 // It is a rule applied to history, NOT an order and NOT advice. Nothing here can trade.
-function marketSignal({ price, daysSincePeak, drawdown, ma365, value, trend, t }) {
+function marketSignal({ price, daysSincePeak, drawdown, ma365, value, trend, t, realized = REALIZED_PRICE }) {
   const checks = [
     ["Bear market at least ~11 months old", daysSincePeak >= 330, "past lows: 12 months after the top"],
     ["Down 50%+ from the top", drawdown <= -0.5, "past lows: -77% to -84%"],
-    ["Within 10% of realized price (~$" + Math.round(REALIZED_PRICE / 1000) + "K)", price <= REALIZED_PRICE * 1.1, "where past lows formed"],
+    ["Within 10% of realized price (~$" + Math.round(realized / 1000) + "K)", price <= realized * 1.1, "where past lows formed"],
     ["Above its 50-day average", t ? price > t.ma50 : null, "short-term trend turning"],
     ["Above its 365-day average", ma365 ? price > ma365 : null, "ended the last two bears"],
     ["Up over the last 30 days", t ? t.chg30 > 0 : null, "momentum"]

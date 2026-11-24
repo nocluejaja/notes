@@ -98,6 +98,14 @@ button.ghost { background: transparent; color: var(--btc); border: 1px solid var
 .planform input { width: 130px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px; }
 #planEdit { margin: 0 0 8px; padding: 6px 10px; }
 
+.bt { margin: -2px 0 10px; padding: 8px 10px; }
+.bt summary { font-weight: 600; font-size: 13px; }
+.bt table { margin-top: 6px; font-size: 11.5px; }
+.bt td, .bt th { padding: 4px 3px; }
+.bt tr.cur td { color: var(--btc); font-weight: 600; }
+.bt .ep { border-left: 3px solid var(--line); padding: 3px 8px; margin: 4px 0; font-size: 11.5px; }
+.bt .ep.buy { border-color: #16a34a; } .bt .ep.scale { border-color: #ca8a04; } .bt .ep.sell { border-color: #ea580c; } .bt .ep.avoid { border-color: #dc2626; }
+
 body{width:auto;max-width:560px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));font-size:14px;-webkit-text-size-adjust:100%}
 input,textarea{font-size:16px!important}
 .phase{max-width:190px}
@@ -118,6 +126,9 @@ input,textarea{font-size:16px!important}
     <ul id="sigChecks"></ul>
     <div class="sigFoot">This never places orders. It can't buy or sell for you — you decide, on your exchange.</div>
   </section>
+  <details id="bt" class="bt"><summary>Has this signal worked before? <span id="btHint" class="muted small"></span></summary>
+    <div id="btBody" class="small muted">Loading…</div>
+  </details>
   <p id="phaseNote" class="note"></p>
 
   <section class="scores">
@@ -320,7 +331,7 @@ const REALIZED_PRICE = 56000;
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 
 // VALUE score: how closely today resembles past cycle BOTTOMS (100) vs TOPS (0).
-function valueScore({ price, daysSincePeak, drawdown }) {
+function valueScore({ price, daysSincePeak, drawdown, realized = REALIZED_PRICE }) {
   let t;
   if (daysSincePeak < 180) t = 0;
   else if (daysSincePeak < 330) t = (daysSincePeak - 180) / 150;
@@ -329,7 +340,7 @@ function valueScore({ price, daysSincePeak, drawdown }) {
   const parts = {
     timing: t * 35,                                        // past lows: 363-376 days after top
     depth: clamp01(-drawdown / 0.8) * 35,                  // past lows: -77% to -84%
-    realized: clamp01((1.5 - price / REALIZED_PRICE) / 0.5) * 30 // at/below realized price = 30
+    realized: clamp01((1.5 - price / realized) / 0.5) * 30 // at/below realized price = 30
   };
   return { score: Math.round(parts.timing + parts.depth + parts.realized), parts };
 }
@@ -351,11 +362,11 @@ function trendScore({ price, ma365, history }) {
 
 // Plain-language signal from both scores + a 6-point checklist.
 // It is a rule applied to history, NOT an order and NOT advice. Nothing here can trade.
-function marketSignal({ price, daysSincePeak, drawdown, ma365, value, trend, t }) {
+function marketSignal({ price, daysSincePeak, drawdown, ma365, value, trend, t, realized = REALIZED_PRICE }) {
   const checks = [
     ["Bear market at least ~11 months old", daysSincePeak >= 330, "past lows: 12 months after the top"],
     ["Down 50%+ from the top", drawdown <= -0.5, "past lows: -77% to -84%"],
-    ["Within 10% of realized price (~$" + Math.round(REALIZED_PRICE / 1000) + "K)", price <= REALIZED_PRICE * 1.1, "where past lows formed"],
+    ["Within 10% of realized price (~$" + Math.round(realized / 1000) + "K)", price <= realized * 1.1, "where past lows formed"],
     ["Above its 50-day average", t ? price > t.ma50 : null, "short-term trend turning"],
     ["Above its 365-day average", ma365 ? price > ma365 : null, "ended the last two bears"],
     ["Up over the last 30 days", t ? t.chg30 > 0 : null, "momentum"]
@@ -631,6 +642,7 @@ async function render() {
   $("signal").style.setProperty("--sig", sig.color);
   $("sigLabel").textContent = sig.label;
   $("sigText").textContent = sig.text;
+  renderBacktest(sig.key);
   $("sigChecks").innerHTML = `<li class="u"><i></i><b>${sig.met} of 6 buy conditions met</b></li>` +
     sig.checks.map(([l, ok, why]) => `<li class="${ok === true ? "y" : ok === false ? "n" : "u"}"><i>${ok === true ? "✓" : ok === false ? "✗" : "…"}</i>${l}<small>${why}</small></li>`).join("");
 
@@ -819,6 +831,23 @@ $("planForm").addEventListener("submit", async (e) => {
   $("planSaved").textContent = "Saved ✓";
   renderPlan((await chrome.storage.local.get("price")).price);
 });
+
+async function renderBacktest(curKey) {
+  let b;
+  try { b = await (await fetch(MARKET_URL.replace("market.json", "backtest.json"), { cache: "no-store" })).json(); }
+  catch (e) { $("btBody").textContent = "Backtest not available yet."; return; }
+  const p0 = (x) => (x == null ? "—" : (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(0) + "%");
+  const cur = b.bySignal.find((r) => r.key === curKey);
+  if (cur && cur.med12 != null) $("btHint").textContent = `· now: median ${p0(cur.med12)} after 12 mo`;
+  const row = (r) => `<tr class="${r.key === curKey ? "cur" : ""}"><td>${r.label}</td><td>${r.days}</td><td>${p0(r.med6)}</td><td>${p0(r.med12)}</td><td>${r.win12 == null ? "—" : Math.round(r.win12 * 100) + "%"}</td><td>${p0(r.medDrop12)}</td></tr>`;
+  $("btBody").innerHTML =
+    `<table><tr><th>Signal (${b.from.slice(0, 4)}–${b.to.slice(0, 4)})</th><th>Days</th><th>6 mo</th><th>12 mo</th><th>Up after 12 mo</th><th>Dip first</th></tr>` +
+    b.bySignal.map(row).join("") + row(b.all) + `</table>` +
+    `<p class="muted">Median BTC change after a day with each signal. "Dip first" = typical lowest point within the next 12 months, so you know what holding through it felt like.</p>` +
+    `<b>Past stretches (7+ days)</b>` +
+    b.episodes.slice().reverse().map((e) => `<div class="ep ${e.key}"><b>${e.label}</b> · ${e.start} → ${e.end} (${e.days}d) at ${fmt(e.price)}<br>Next 12 mo: ${p0(e.r12)} · 6 mo: ${p0(e.r6)} · dip first: ${p0(e.dd12)}</div>`).join("") +
+    `<p class="muted">${b.note.replace(/</g, "&lt;")}</p>`;
+}
 
 async function renderResearch() {
   try {
