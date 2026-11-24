@@ -1,0 +1,234 @@
+{
+ "updated": "2026-11-24",
+ "from": "2019-05-23",
+ "to": "2026-11-24",
+ "note": "Same rules as the dashboard, run on every day since 2019. Uses the 200-week average in place of realized price (no free history for it). Past results don't guarantee future ones.",
+ "today": {
+  "label": "EARLY — SMALL BUYS ONLY",
+  "met": 3
+ },
+ "all": {
+  "key": "all",
+  "label": "Any day (buy & hold)",
+  "days": 2734,
+  "daysWith12m": 2369,
+  "med3": 0.05588294291976914,
+  "med6": 0.15550258361500746,
+  "med12": 0.40561368837112544,
+  "win12": 0.6184043900379907,
+  "medDrop12": -0.22807563512408302
+ },
+ "bySignal": [
+  {
+   "key": "buy",
+   "label": "BUY ZONE",
+   "days": 364,
+   "daysWith12m": 299,
+   "med3": 0.16583543231440512,
+   "med6": 0.370295374217787,
+   "med12": 1.2781925643440748,
+   "win12": 1,
+   "medDrop12": -0.080578148701837
+  },
+  {
+   "key": "scale",
+   "label": "EARLY — SMALL BUYS ONLY",
+   "days": 173,
+   "daysWith12m": 145,
+   "med3": 0.004746143238436584,
+   "med6": 0.44310876773988084,
+   "med12": 0.4725966150589347,
+   "win12": 1,
+   "medDrop12": -0.18190510598802767
+  },
+  {
+   "key": "hold",
+   "label": "HOLD / WAIT",
+   "days": 603,
+   "daysWith12m": 470,
+   "med3": 0.1282636661055172,
+   "med6": 0.2996365061402073,
+   "med12": 1.4527918344700916,
+   "win12": 0.9234042553191489,
+   "medDrop12": -0.2875243272566992
+  },
+  {
+   "key": "sell",
+   "label": "TAKE-PROFIT ZONE",
+   "days": 1261,
+   "daysWith12m": 1201,
+   "med3": 0.011324363392137604,
+   "med6": 0.060863754813908155,
+   "med12": -0.058083166109253015,
+   "win12": 0.4687760199833472,
+   "medDrop12": -0.26363015988669536
+  },
+  {
+   "key": "avoid",
+   "label": "SELL / AVOID",
+   "days": 333,
+   "daysWith12m": 254,
+   "med3": -0.09768882145174618,
+   "med6": -0.19636767923373744,
+   "med12": -0.29706656063099135,
+   "win12": 0.09448818897637795,
+   "medDrop12": -0.46751511418324965
+  }
+ ],
+ "episodes": [
+  {
+   "key": "sell",
+   "label": "TAKE-PROFIT ZONE",
+   "start": "2024-09-09",
+   "end": "2025-02-24",
+   "days": 169,
+   "price": 57054,
+   "r6": 0.3766755646853239,
+   "r12": 0.9978295962239216,
+   "dd12": 0.00523873039354017
+  },
+  {
+   "key": "avoid",
+   "label": "SELL / AVOID",
+   "start": "2025-03-07",
+   "end": "2025-03-18",
+   "days": 12,
+   "price": 86757,
+   "r6": 0.2703600332791669,
+   "r12": -0.21122000788870243,
+   "dd12": -0.276242672347516
+  },
+  {
+   "key": "sell",
+   "label": "TAKE-PROFIT ZONE",
+   "start": "2025-03-23",
+   "end": "2025-04-05",
+   "days": 13,
+   "price": 86093,
+   "r6": 0.3094754343387507,
+   "r12": -0.17180746760419618,
+   "dd12": -0.2706602887530616
+  },
+  {
+   "key": "sell",
+   "label": "TAKE-PROFIT ZONE",
+   "start": "2025-04-09",
+   "end": "2025-11-03",
+   "days": 209,
+   "price": 82595,
+   "r6": 0.49335460183607305,
+   "r12": -0.1161922519288453,
+   "dd12": -0.2397700822388832
+  },
+  {
+   "key": "avoid",
+   "label": "SELL / AVOID",
+   "start": "2025-11-12",
+   "end": "2025-12-20",
+   "days": 39,
+   "price": 101639,
+   "r6": -0.2022807975008808,
+   "r12": -0.32863828563462005,
+   "dd12": -0.4241981499032704
+  },
+  {
+   "key": "avoid",
+   "label": "SELL / AVOID",
+   "start": "2025-12-23",
+   "end": "2025-12-29",
+   "days": 7,
+   "price": 87429,
+   "r6": -0.3024865113900006,
+   "r12": null,
+   "dd12": null
+  },
+  {
+   "key": "sell",
+   "label": "TAKE-PROFIT ZONE",
+   "start": "2025-12-30",
+   "end": "2026-01-24",
+   "days": 26,
+   "price": 88398,
+   "r6": -0.32168387115020225,
+   "r12": null,
+   "dd12": null
+  },
+  {
+   "key": "avoid",
+   "label": "SELL / AVOID",
+   "start": "2026-03-10",
+   "end": "2026-03-21",
+   "days": 12,
+   "price": 69961,
+   "r6": 0.12130044769337345,
+   "r12": null,
+   "dd12": null
+  },
+  {
+   "key": "avoid",
+   "label": "SELL / AVOID",
+   "start": "2026-04-07",
+   "end": "2026-04-16",
+   "days": 10,
+   "price": 71910,
+   "r6": 0.18953597681552825,
+   "r12": null,
+   "dd12": null
+  },
+  {
+   "key": "sell",
+   "label": "TAKE-PROFIT ZONE",
+   "start": "2026-04-20",
+   "end": "2026-05-16",
+   "days": 27,
+   "price": 75865,
+   "r6": 0.07872986254769332,
+   "r12": null,
+   "dd12": null
+  },
+  {
+   "key": "scale",
+   "label": "EARLY — SMALL BUYS ONLY",
+   "start": "2026-06-23",
+   "end": "2026-07-05",
+   "days": 13,
+   "price": 62645,
+   "r6": null,
+   "r12": null,
+   "dd12": null
+  },
+  {
+   "key": "buy",
+   "label": "BUY ZONE",
+   "start": "2026-07-14",
+   "end": "2026-08-20",
+   "days": 38,
+   "price": 64989,
+   "r6": null,
+   "r12": null,
+   "dd12": null
+  },
+  {
+   "key": "buy",
+   "label": "BUY ZONE",
+   "start": "2026-11-05",
+   "end": "2026-11-12",
+   "days": 8,
+   "price": 75969,
+   "r6": null,
+   "r12": null,
+   "dd12": null
+  },
+  {
+   "key": "scale",
+   "label": "EARLY — SMALL BUYS ONLY",
+   "start": "2026-11-13",
+   "end": "2026-11-24",
+   "days": 12,
+   "price": 68237,
+   "r6": null,
+   "r12": null,
+   "dd12": null
+  }
+ ]
+}
