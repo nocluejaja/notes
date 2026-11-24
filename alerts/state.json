@@ -1,0 +1,49 @@
+{
+ "cycle": {
+  "id": "2024",
+  "label": "2024 halving → 2025 top (now)",
+  "halving": "2024-04-20",
+  "halvingPrice": 64000,
+  "peakDate": "2025-10-06",
+  "peak": 126200,
+  "lowDate": "2026-11-21",
+  "low": 55100
+ },
+ "lastSignal": "scale",
+ "trendUp": false,
+ "levels": {
+  "47000": true,
+  "50000": true,
+  "55000": true,
+  "72000": false,
+  "75000": false
+ },
+ "fngZone": "fear",
+ "eventsSent": [],
+ "journal": {
+  "k": 1,
+  "entries": [
+   {
+    "madeAt": 1795480800774,
+    "dueAt": 1796085600774,
+    "start": 61153.335,
+    "low": 57269.139907248515,
+    "high": 65300.96990593864,
+    "weekVol": 0.06562249058194422,
+    "k": 1,
+    "direction": "down",
+    "scoresThen": {
+     "value": 82,
+     "trend": 15
+    },
+    "ma365Then": 75244.4558082192,
+    "note": "Nov 22 2026 research: BTC hit ~$55.1K on Nov 21 (lowest since Sep 2024), bounced to ~$59-60K. Drivers: AI-stock sell-off (Nasdaq erased 2026 gains; heavy Hacker News coverage), record spot-ETF outflows (IBIT record single-day redemption), Fed rate-hike fears before the December meeting, ~$2.5B leveraged liquidations. Binance $6.3B hack (~Oct 30, compromised DevOps laptop; covered on Security Now #1103) - custody risk, no clear price effect; BTC was already falling before it. Security Now #1104/#1105: nothing about Bitcoin itself. Watch: Nasdaq/AI stocks, ETF flows, December FOMC, realized price ~$56K.",
+    "graded": false,
+    "rLow": 54000,
+    "rHigh": 63000
+   }
+  ]
+ },
+ "lastRun": "2026-11-24T00:40:00.765Z",
+ "lastPrice": 61153.335
+}
