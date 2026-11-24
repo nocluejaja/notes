@@ -41,7 +41,9 @@ let ath = 0, athIdx = 0;
 for (let i = 0; i < rows.length; i++) {
   const price = closes[i];
   if (price >= ath) { ath = price; athIdx = i; }
-  const ma365 = avg(i, 365), ma200w = avg(i, 1400);
+  const ma365 = avg(i, 365);
+  // 200-week average; before 4 years of data exist, use the average of all data so far (stand-in for realized price).
+  const ma200w = avg(i, 1400) || (i >= 365 ? prefix[i + 1] / (i + 1) : null);
   if (!ma365 || !ma200w || i < 120) continue;
   const daysSincePeak = i - athIdx, drawdown = price / ath - 1;
   const history = rows.slice(i - 119, i + 1);
@@ -75,10 +77,19 @@ for (let i = 0; i < days.length; ) {
   i = j + 1;
 }
 const today = days[days.length - 1];
+// Weekly series of price + zone for the halving-cycle chart
+const HALVINGS = ["2016-07-09", "2020-05-11", "2024-04-20"];
+const series = days.filter((d, i) => i % 7 === 0 || i === days.length - 1).map((d) => [d.date, Math.round(d.price), d.key]);
+const cycles = HALVINGS.map((h, k) => {
+  const end = HALVINGS[k + 1] || "9999";
+  const inC = days.filter((d) => d.date >= h && d.date < end);
+  const counts = {}; inC.forEach((d) => (counts[d.key] = (counts[d.key] || 0) + 1));
+  return { halving: h, end: HALVINGS[k + 1] || null, days: inC.length, counts };
+});
 const out = {
   updated: new Date().toISOString().slice(0, 10), from: days[0].date, to: today.date,
-  note: "Same rules as the dashboard, run on every day since " + days[0].date.slice(0, 4) + ". Uses the 200-week average in place of realized price (no free history for it). Past results don't guarantee future ones.",
-  today: { label: today.label, met: today.met }, all, bySignal, episodes: episodes.slice(-14)
+  note: "Same rules as the dashboard, run on every day since " + days[0].date.slice(0, 4) + ". Uses the 200-week average in place of realized price (no free history for it); before 2019 it uses the average of all prices so far. Past results don't guarantee future ones.",
+  today: { label: today.label, met: today.met }, all, bySignal, episodes: episodes.slice(-14), halvings: HALVINGS, cycles, series
 };
 fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
 const pct = (x) => (x == null ? "  n/a" : (x * 100).toFixed(0).padStart(5) + "%");
