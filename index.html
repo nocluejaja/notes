@@ -83,6 +83,21 @@ button.ghost { background: transparent; color: var(--btc); border: 1px solid var
 .research { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--btc); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 12px; }
 .research:empty { display: none; }
 
+.drivers { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.drivers > div { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.drivers b { display: block; font-size: 15px; } .drivers small { color: var(--muted); font-size: 10.5px; display: block; margin-top: 2px; }
+.drivers .wide { grid-column: 1 / -1; }
+.wkbars { display: flex; gap: 3px; align-items: flex-end; height: 28px; margin-top: 4px; }
+.wkbars i { flex: 1; border-radius: 2px; min-height: 3px; }
+.pos { color: #22c55e; } .neg { color: #ef4444; }
+.plan { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px; }
+.plan > div { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; text-align: center; }
+.plan b { display: block; font-size: 15px; } .plan span { font-size: 10.5px; color: var(--muted); }
+.plan .wide { grid-column: 1 / -1; text-align: left; font-size: 12px; }
+.planform label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; }
+.planform input { width: 130px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px; }
+#planEdit { margin: 0 0 8px; padding: 6px 10px; }
+
 body{width:auto;max-width:560px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));font-size:14px;-webkit-text-size-adjust:100%}
 input,textarea{font-size:16px!important}
 .phase{max-width:190px}
@@ -140,10 +155,24 @@ input,textarea{font-size:16px!important}
   <h2>Market mood &amp; key levels</h2>
   <div id="mood" class="mood"><span class="muted small">Loading…</span></div>
 
+  <h2>What's moving BTC</h2>
+  <div id="drivers" class="drivers"><span class="muted small">Loading…</span></div>
+
   <h2>Coming up</h2>
   <div id="events" class="events"><span class="muted small">Loading…</span></div>
 
-  <section id="buys"><h2>My buys</h2>
+  <section id="buys"><h2>Buy plan</h2>
+  <div id="planView" class="plan"></div>
+  <details id="planEdit"><summary class="small">Set up / edit plan</summary>
+    <form id="planForm" class="planform">
+      <label>Total budget $ <input id="pBudget" type="number" step="any" min="0"></label>
+      <label>Spread over (weeks) <input id="pWeeks" type="number" min="1" step="1"></label>
+      <label>Start date <input id="pStart" type="date"></label>
+      <label>Part kept for limit orders (%) <input id="pReserve" type="number" min="0" max="100" step="5"></label>
+      <button type="submit">Save plan</button> <span id="planSaved" class="muted small"></span>
+    </form>
+  </details>
+  <h2>My buys</h2>
   <div id="buySummary" class="buysum"></div>
   <form id="buyForm" class="buyform">
     <input id="bDate" type="date" aria-label="Date">
@@ -726,6 +755,9 @@ async function renderMarket(price) {
   $("mood").innerHTML =
     `<div><b style="color:${fColor}">${f ? f.value + " · " + f.label : "—"}</b><small>Fear &amp; Greed (yesterday ${f ? f.prev : "—"}). Lows often came in Extreme Fear. Data: <a href="https://alternative.me/crypto/fear-and-greed-index/">Alternative.me</a></small></div>` +
     `<div><b>${ma ? fmt(ma) : "—"}</b><small>200-week average · price is ${ma ? `<b style="display:inline;font-size:inherit;color:${price > ma ? "#22c55e" : "#ef4444"}">${pct(Math.abs(price / ma - 1))}</b> ${price > ma ? "above" : "below"}` : "—"}. 2022's low came ~30% below it.</small></div>`;
+  window.__market = m;
+  renderDrivers(m, price);
+  renderPlan(price);
   const evs = (m.events || []).filter((e) => Date.parse(e.date) > Date.now() - 3 * 3600e3);
   $("events").innerHTML = evs.length ? evs.slice(0, 5).map((e) => {
     const days = Math.ceil((Date.parse(e.date) - Date.now()) / 86400e3);
@@ -733,6 +765,60 @@ async function renderMarket(price) {
     return `<div class="${e.kind === "fed" ? "fed" : ""}"><span>${e.name.replace(/</g, "&lt;")}</span><em>${when} · ${days <= 0 ? "today" : days === 1 ? "tomorrow" : "in " + days + "d"}</em></div>`;
   }).join("") : '<span class="muted small">No events listed.</span>';
 }
+
+function sgn(x, d = 1) { return (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(d) + "%"; }
+function renderDrivers(m, price) {
+  const out = [];
+  const w = m.weekly;
+  if (w && w.weeks && w.weeks.length) {
+    const max = Math.max(...w.weeks.map((x) => Math.abs(x.chg || 0)), 0.01);
+    out.push(`<div class="wide"><b class="${w.dir === "red" ? "neg" : "pos"}">${w.streak} ${w.dir} week${w.streak === 1 ? "" : "s"} in a row</b>
+      <div class="wkbars">${w.weeks.filter((x) => x.chg != null).map((x) => `<i title="${x.week}: ${fmt(x.close)}" style="height:${Math.max(10, Math.abs(x.chg) / max * 100)}%;background:${x.chg < 0 ? "#ef4444" : "#22c55e"}"></i>`).join("")}</div>
+      <small>Weekly closes, last ${w.weeks.filter((x) => x.chg != null).length} weeks. Last close ${fmt(w.weeks[w.weeks.length - 1].close)}. Long red streaks have ended near bottoms before.</small></div>`);
+  }
+  const e = m.etf;
+  out.push(e ? `<div><b class="${e.sum5 < 0 ? "neg" : "pos"}">${e.sum5 < 0 ? "−" : "+"}$${Math.abs(e.sum5).toFixed(0)}M</b><small>Spot ETF flows, last 5 days. Latest ${e.latest.date}: ${e.latest.total < 0 ? "−" : "+"}$${Math.abs(e.latest.total).toFixed(0)}M. Steady inflows would support a turn. Data: Farside</small></div>`
+    : `<div><b>—</b><small>ETF flows unavailable right now.</small></div>`);
+  const t = m.tech;
+  out.push(t ? `<div><b class="${t.ndxDay < 0 ? "neg" : "pos"}">Nasdaq ${sgn(t.ndxDay)}</b><small>Week ${sgn(t.ndxWeek)} · month ${sgn(t.ndxMonth)}. BTC moves with it: ${t.corr30.toFixed(2)} (30-day link, 1 = in lockstep). BTC rising on red Nasdaq days = strength.</small></div>`
+    : `<div><b>—</b><small>Nasdaq data unavailable right now.</small></div>`);
+  const f = m.funding;
+  if (f) {
+    const lean = f.avg1d < 0 ? "Betting on a drop" : f.avg1d > 0.0003 ? "Heavily betting up" : "Mildly betting up";
+    out.push(`<div class="wide"><b class="${f.avg1d < 0 ? "pos" : ""}">${lean}</b><small>Futures funding ${(f.avg1d * 100).toFixed(4)}% per 8h (7-day avg ${(f.avg7d * 100).toFixed(4)}%, ${f.src}). Negative = most traders short; that crowding often came near bottoms. Heavily positive = crowded longs, risk of a flush.</small></div>`);
+  } else out.push(`<div class="wide"><b>—</b><small>Leverage data unavailable right now.</small></div>`);
+  $("drivers").innerHTML = out.join("");
+}
+
+async function renderPlan(price) {
+  const { plan, buys = [] } = await chrome.storage.local.get(["plan", "buys"]);
+  const m = window.__market || {};
+  const day = m.buyDay ? `${m.buyDay.weekday}s ~${m.buyDay.hourCT > 12 ? m.buyDay.hourCT - 12 + " PM" : m.buyDay.hourCT + " AM"} CT` : "—";
+  const levels = (m.orderLevels || []).map((l) => `${fmt(l)} (${price ? sgn(l / price - 1, 0) : ""})`).join(" · ");
+  if (!plan || !plan.budget) {
+    $("planView").innerHTML = `<div class="wide">No plan yet. Tap <b>Set up / edit plan</b>: pick a total budget and how many weeks to spread it over. Reminder day: ${day}.${levels ? "<br>Order-level alerts: " + levels : ""}</div>`;
+    return;
+  }
+  if (!$("pBudget").value) { $("pBudget").value = plan.budget; $("pWeeks").value = plan.weeks; $("pStart").value = plan.start; $("pReserve").value = plan.reserve; }
+  const regular = plan.budget * (1 - (plan.reserve || 0) / 100), weekly = regular / plan.weeks;
+  const reserve = plan.budget - regular;
+  const spent = buys.filter((b) => b.date >= plan.start).reduce((a, b) => a + b.usd, 0);
+  const weeksIn = Math.max(0, Math.min(plan.weeks, Math.floor((Date.now() - Date.parse(plan.start + "T00:00:00")) / (7 * 86400e3)) + 1));
+  const target = Math.min(regular, weekly * weeksIn);
+  const diff = spent - target;
+  $("planView").innerHTML =
+    `<div><b>${fmt(weekly)}</b><span>per week</span></div><div><b>${fmt(Math.max(0, plan.budget - spent))}</b><span>left of ${fmt(plan.budget)}</span></div><div><b>${weeksIn}/${plan.weeks}</b><span>weeks</span></div>` +
+    `<div class="wide">${Math.abs(diff) < 1 ? "On track ✓" : diff < 0 ? `Behind plan by ${fmt(-diff)}` : `Ahead of plan by ${fmt(diff)}`} · reminder ${day}.` +
+    (reserve ? `<br>${fmt(reserve)} kept for limit orders at ${levels || "your levels"}.` : levels ? `<br>Order-level alerts: ${levels}` : "") +
+    `<br><span class="muted">You place every order yourself on your exchange.</span></div>`;
+}
+$("planForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const plan = { budget: parseFloat($("pBudget").value) || 0, weeks: parseInt($("pWeeks").value, 10) || 1, start: $("pStart").value || new Date().toLocaleDateString("en-CA"), reserve: Math.min(100, Math.max(0, parseFloat($("pReserve").value) || 0)) };
+  await chrome.storage.local.set({ plan });
+  $("planSaved").textContent = "Saved ✓";
+  renderPlan((await chrome.storage.local.get("price")).price);
+});
 
 async function renderResearch() {
   try {
@@ -767,7 +853,8 @@ $("buyForm").addEventListener("submit", async (e) => {
   buys.sort((a, b) => a.date.localeCompare(b.date));
   await chrome.storage.local.set({ buys });
   $("bUsd").value = ""; $("bPrice").value = "";
-  renderBuys((await chrome.storage.local.get("price")).price);
+  const pr = (await chrome.storage.local.get("price")).price;
+  renderBuys(pr); renderPlan(pr);
 });
 
 async function loadAlerts() {

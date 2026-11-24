@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import vm from "node:vm";
 import path from "node:path";
+import { weekly, etfFlows, techLink, funding } from "./drivers.mjs";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 for (const f of ["lib/cycles.js", "lib/forecast.js"]) vm.runInThisContext(fs.readFileSync(path.join(here, f), "utf8"));
@@ -110,6 +111,54 @@ for (const lvl of CONFIG.levels) {
 }
 if (newLow && !first) await push(`New cycle low: ${money(price)}`, `Lowest since the ${money(c.peak)} top (${(drawdown * 100).toFixed(0)}%). ${line}`, ["warning"]);
 
+// Extra drivers
+const wk = weekly(all);
+const [etf, tech, fund] = await Promise.all([etfFlows(), techLink(all), funding()]);
+const ord = (n) => n + (["th", "st", "nd", "rd"][((n % 100) - 20) % 10] || ["th", "st", "nd", "rd"][n % 100] || "th");
+
+// 3a) Sunday weekly close summary
+if (wk.latest && s.lastWeekReported !== wk.latest) {
+  const w = wk.weeks[wk.weeks.length - 1];
+  if (s.lastWeekReported && w && w.chg != null)
+    await push(`Week closed ${money(w.close)} (${(w.chg * 100).toFixed(1)}%)`,
+      `${ord(wk.streak)} ${wk.dir} week in a row.` + (wk.dir === "red" && wk.streak >= 6 ? " Long red streaks have ended near bottoms before." : "") + ` Right now: ${sig.label}. ${line}`, ["calendar"]);
+  s.lastWeekReported = wk.latest;
+}
+
+// 3d) Buy-day reminder (no amounts sent - the plan lives on your phone)
+if (CONFIG.buyDay) {
+  const ct = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
+  const dayName = ct.toLocaleDateString("en-US", { weekday: "long" });
+  const key = ct.toDateString();
+  if (dayName === CONFIG.buyDay.weekday && ct.getHours() >= CONFIG.buyDay.hourCT && s.buyDaySent !== key) {
+    await push("Buy day", `Your weekly amount is in the app's Buy plan. Right now: ${sig.label}. ${line}. You place any order yourself.`, ["moneybag"]);
+    s.buyDaySent = key;
+  }
+}
+
+// 3e) Near your limit-order levels
+s.nearSent = s.nearSent || {};
+for (const lvl of CONFIG.orderLevels || []) {
+  const dist = price / lvl - 1, near = dist >= 0 && dist <= (CONFIG.orderNearPct || 2) / 100;
+  if (near && !s.nearSent[lvl]) await push(`Near your ${money(lvl)} level`, `BTC is ${(dist * 100).toFixed(1)}% above it. Right now: ${sig.label}. ${line}`, ["dart"], 4);
+  s.nearSent[lvl] = near || (s.nearSent[lvl] && dist <= 0.05); // re-arm after moving 5% away
+}
+
+// 3f) Big ETF flow day
+if (etf && etf.latest && s.etfSeen !== etf.latest.date) {
+  if (s.etfSeen && Math.abs(etf.latest.total) >= (CONFIG.etfAlertUsdM || 500))
+    await push(`ETF ${etf.latest.total < 0 ? "outflow" : "inflow"}: $${Math.abs(etf.latest.total).toFixed(0)}M`, `Spot BTC ETFs on ${etf.latest.date}. 5-day total: ${etf.sum5 >= 0 ? "+" : "−"}$${Math.abs(etf.sum5).toFixed(0)}M. ${line}`, ["bank"]);
+  s.etfSeen = etf.latest.date;
+}
+
+// 3g) Funding turns negative / positive (3 readings ≈ 1 day)
+if (fund) {
+  const neg = fund.avg1d < 0;
+  if (s.fundNeg === false && neg) await push("Traders now betting on a drop", `Funding turned negative (${(fund.avg1d * 100).toFixed(4)}%). Crowded short bets have often come near bottoms. ${line}`, ["scales"]);
+  if (s.fundNeg === true && !neg) await push("Funding back positive", `Traders are leaning long again. ${line}`, ["scales"]);
+  s.fundNeg = neg;
+}
+
 // 3b) Fear & Greed extremes
 if (fng) {
   const [lo, hi] = CONFIG.fearGreedAlerts || [20, 80];
@@ -157,7 +206,7 @@ s.journal = j;
 s.lastRun = now.toISOString(); s.lastPrice = price;
 
 // Shared market data for the dashboard (read from raw.githubusercontent.com)
-const market = { updated: today, ma200w, fng, events: (CONFIG.events || []).filter((e) => Date.parse(e.date) > Date.now() - 86400e3).slice(0, 6) };
+const market = { updated: today, ma200w, fng, weekly: wk, etf, tech, funding: fund, buyDay: CONFIG.buyDay, orderLevels: CONFIG.orderLevels, events: (CONFIG.events || []).filter((e) => Date.parse(e.date) > Date.now() - 86400e3).slice(0, 6) };
 const prevMarket = fs.existsSync(MARKET) ? fs.readFileSync(MARKET, "utf8") : "";
 const mJson = JSON.stringify(market, null, 1);
 const strip = (x) => x.replace(/"updated": "[^"]*",?/, "");

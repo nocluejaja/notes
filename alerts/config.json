@@ -61,5 +61,16 @@
  "fearGreedAlerts": [
   20,
   80
- ]
+ ],
+ "buyDay": {
+  "weekday": "Monday",
+  "hourCT": 9
+ },
+ "orderLevels": [
+  55000,
+  50000,
+  47000
+ ],
+ "orderNearPct": 2,
+ "etfAlertUsdM": 500
 }
